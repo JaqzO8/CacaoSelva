@@ -32,7 +32,11 @@ function Start-Cluster($settings) {
     if ($IsWindows) { $options.WindowStyle = 'Hidden' }
     $process = Start-Process @options
     $process.WaitForExit()
-    if ($process.ExitCode -ne 0) { throw 'No se pudo iniciar PostgreSQL. Revisa data/postgres.log.' }
+    if ($process.ExitCode -ne 0) {
+        Get-Content -LiteralPath (Join-Path $dataRoot 'postgres.log') -Tail 20 -ErrorAction SilentlyContinue |
+            Write-Output
+        throw 'No se pudo iniciar PostgreSQL. Revisa data/postgres.log.'
+    }
 }
 
 if (Test-Path -LiteralPath $settingsPath) {
@@ -60,6 +64,9 @@ if (Test-Path -LiteralPath $settingsPath) {
         & (Join-Path $settings.bin 'initdb') -D $cluster --username=$($settings.adminUser) `
             --pwfile=$passwordFile --auth=scram-sha-256 --encoding=UTF8 --locale=C
         if ($LASTEXITCODE -ne 0) { throw 'Falló initdb.' }
+        # Todos los clientes usan TCP local. Evita requerir permisos sobre /var/run/postgresql en Linux.
+        Add-Content -LiteralPath (Join-Path $cluster 'postgresql.conf') `
+            -Value "unix_socket_directories = ''" -Encoding utf8NoBOM
     } finally {
         if (Test-Path -LiteralPath $passwordFile) { Remove-Item -LiteralPath $passwordFile }
     }
