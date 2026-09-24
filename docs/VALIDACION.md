@@ -1,6 +1,18 @@
 # Validación de la versión con PostgreSQL
 
-Fecha: 21 de septiembre de 2026. Entorno: Windows, JDK 21.0.8, Maven Wrapper 3.9.16 y PostgreSQL 17.6.
+Última validación: 23 de septiembre de 2026 (hora de Lima). Entorno local: Windows, JDK 21.0.8, Maven Wrapper 3.9.16 y PostgreSQL 17.6. También se ejecutó la verificación completa en Ubuntu mediante GitHub Actions, con JDK 21 y PostgreSQL 17.
+
+## Clonación e instalación pública
+
+Se clonó [JaqzO8/CacaoSelva](https://github.com/JaqzO8/CacaoSelva) en una carpeta nueva y se siguió el [manual de usuario](MANUAL_USUARIO.md):
+
+1. `git clone https://github.com/JaqzO8/CacaoSelva.git` obtuvo el código publicado.
+2. `database.ps1 start -Port 55433` creó una instancia independiente y credenciales diferentes de las originales. Se eligió otro puerto para coexistir con la instalación de trabajo.
+3. `verify.ps1 -Gui -Postman` compiló los seis módulos y terminó con **97 pruebas Java y 22 aserciones Postman correctas**.
+4. Se comprobó la eliminación de la base temporal al finalizar y se detuvo únicamente la instancia de la clonación.
+5. Se verificaron los enlaces internos del manual y la exclusión de credenciales, bases locales, herramientas descargadas y resultados de compilación del historial publicado.
+
+La [ejecución remota verificada](https://github.com/JaqzO8/CacaoSelva/actions/runs/35957447040), correspondiente a la revisión `7f965ad`, terminó con **success**. Incluye los mismos 97 casos Java, 12 peticiones / 22 aserciones Postman y las comprobaciones de persistencia y recuperación. Sus reportes y captura JavaFX están en el artefacto `resultados-pruebas`. Las ejecuciones posteriores se consultan en [GitHub Actions](https://github.com/JaqzO8/CacaoSelva/actions/workflows/ci.yml).
 
 ## Pruebas Java
 
@@ -53,6 +65,7 @@ Reportes:
 - `api/target/failsafe-reports/`: integración PostgreSQL.
 - `.tools/validation/cacaoselva_test_*/`: logs de API/Monitor y reporte JSON de Newman.
 - `.tools/verify-postgres-final.log`: ejecución local de la automatización.
+- `.tools/public-clone-validation.log`: validación local desde la clonación pública; no se publica en Git.
 
 El workflow `.github/workflows/ci.yml` ejecuta el mismo procedimiento en GitHub Actions, con PostgreSQL local y Xvfb. El estado de cada revisión y sus reportes se consultan en [Pruebas CacaoSelva](https://github.com/JaqzO8/CacaoSelva/actions/workflows/ci.yml).
 
