@@ -1,0 +1,23 @@
+.lotes-window {
+    -fx-background-color: #f4f7f2;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
+}
+.title { -fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #24513a; }
+.description { -fx-text-fill: #526154; }
+.form-title { -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #24513a; }
+.text-field, .combo-box { -fx-background-color: white; -fx-border-color: #d5ded1; -fx-border-radius: 4px; }
+#eliminar { -fx-background-color: #934834; }
+.button {
+    -fx-background-color: #24513a;
+    -fx-text-fill: white;
+    -fx-padding: 9px 24px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+.button:hover { -fx-background-color: #326d4e; }
+.button:disabled { -fx-opacity: 0.55; }
+.table-view { -fx-background-color: white; -fx-border-color: #d5ded1; }
+.table-view .column-header { -fx-background-color: #e5eddf; -fx-padding: 7px; }
+.table-row-cell { -fx-cell-size: 36px; }
+#estado { -fx-text-fill: #24513a; }

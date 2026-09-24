@@ -1,0 +1,40 @@
+name: Pruebas CacaoSelva
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar PostgreSQL, JavaFX y Newman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql libgtk-3-0 xvfb
+          echo "$(pg_config --bindir)" >> "$GITHUB_PATH"
+          npm install --global newman@6.2.1
+      - name: Pruebas unitarias, integración, UI y procesos reales
+        run: xvfb-run -a pwsh -NoProfile -File scripts/verify.ps1 -Gui -Postman
+      - name: Reportes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+            desktop/target/javafx-smoke.png
+            .tools/validation/
+          include-hidden-files: true

@@ -1,0 +1,358 @@
+{
+  "info": {
+    "name": "CacaoSelva - Pruebas API",
+    "description": "Ejecutar completa sobre una base de pruebas recién migrada: 30 lotes y 20 pendientes. Incluye creación, modificación y eliminación de su propio registro.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5080",
+      "type": "string"
+    },
+    {
+      "key": "loteId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "P01 - Listar 30 lotes",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"30 lotes y 20 pendientes\", () => { const data=pm.response.json(); pm.expect(data).to.be.an(\"array\"); pm.expect(data.length).to.eql(30); pm.expect(data.filter(l=>l.estado===\"PENDIENTE\").length).to.eql(20); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P02 - Buscar Ana",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/1",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Ana y peso exacto\", () => {const l=pm.response.json(); pm.expect(l.socio).to.eql(\"Ana\"); pm.expect(l.pesoKg).to.eql(120.5);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P03 - Inexistente",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/999",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Error consistente\", () => { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.message).to.be.a(\"string\").and.not.empty; pm.expect(e.timestamp).to.be.a(\"string\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P04A - ID no numerico",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/abc",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error consistente\", () => { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.message).to.be.a(\"string\").and.not.empty; pm.expect(e.timestamp).to.be.a(\"string\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P04B - ID cero",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/0",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error consistente\", () => { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.message).to.be.a(\"string\").and.not.empty; pm.expect(e.timestamp).to.be.a(\"string\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P05 - Conteo",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/pendientes/conteo",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"20 pendientes\",()=>pm.expect(pm.response.json().pendientes).to.eql(20));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P06 - Crear",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/lotes",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"socio\": \"Prueba Postman\",\n  \"pesoKg\": 12.375,\n  \"estado\": \"PENDIENTE\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Identidad generada\",()=>{const l=pm.response.json(); pm.expect(l.id).to.be.above(30); pm.collectionVariables.set(\"loteId\",l.id); pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/lotes/\"+l.id);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P07 - Actualizar",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/lotes/{{loteId}}",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"socio\": \"Postman actualizado\",\n  \"pesoKg\": 25.125,\n  \"estado\": \"LIQUIDADO\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P08 - Leer actualizado",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/{{loteId}}",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cambios persistidos\",()=>{const l=pm.response.json();pm.expect(l.socio).to.eql(\"Postman actualizado\");pm.expect(l.pesoKg).to.eql(25.125);pm.expect(l.estado).to.eql(\"LIQUIDADO\");});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P09 - Eliminar",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/lotes/{{loteId}}",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P10 - Verificar eliminacion",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/lotes/{{loteId}}",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Error consistente\", () => { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.message).to.be.a(\"string\").and.not.empty; pm.expect(e.timestamp).to.be.a(\"string\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P11 - Peso invalido",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/lotes",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"socio\": \"Prueba invalida\",\n  \"pesoKg\": -1,\n  \"estado\": \"PENDIENTE\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error consistente\", () => { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.message).to.be.a(\"string\").and.not.empty; pm.expect(e.timestamp).to.be.a(\"string\"); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
