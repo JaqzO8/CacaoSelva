@@ -4,7 +4,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
-import java.util.List;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +13,9 @@ import pe.edu.cacaoselva.domain.model.Lote;
 import pe.edu.cacaoselva.domain.exception.DatosLoteInvalidosException;
 import pe.edu.cacaoselva.application.exception.LoteNoEncontradoException;
 import pe.edu.cacaoselva.application.dto.GuardarLoteCommand;
+import pe.edu.cacaoselva.application.dto.FiltroLotes;
+import pe.edu.cacaoselva.application.dto.PaginaLotes;
+import pe.edu.cacaoselva.domain.exception.ConflictoEdicionException;
 import pe.edu.cacaoselva.application.usecase.CrearLoteUseCase;
 import pe.edu.cacaoselva.application.usecase.ActualizarLoteUseCase;
 import pe.edu.cacaoselva.application.usecase.EliminarLoteUseCase;
@@ -31,6 +33,7 @@ public final class LotesController {
     private CompletableFuture<?> pending;
     private boolean consultando;
     private boolean cerrado;
+    private FiltroLotes filtro = new FiltroLotes(null, null, null, 0, 20);
 
     public LotesController(LoteQueryPort queryPort, LotesView view,
                            Executor worker, Consumer<Runnable> uiDispatcher,
@@ -45,7 +48,12 @@ public final class LotesController {
     }
 
     public void consultar() {
-        ejecutar(queryPort::findAll, null);
+        consultar(new FiltroLotes(filtro.estado(), filtro.socioId(), filtro.socio(), 0, filtro.size()));
+    }
+
+    public void consultar(FiltroLotes nuevoFiltro) {
+        filtro = nuevoFiltro;
+        ejecutar(() -> queryPort.findAll(filtro), null);
     }
 
     public void guardar(Integer id, GuardarLoteCommand command) {
@@ -55,18 +63,27 @@ public final class LotesController {
             } else {
                 actualizar.execute(id, command);
             }
-            return queryPort.findAll();
+            return paginaActual();
         }, "Guardando lote...");
     }
 
     public void eliminar(Integer id) {
         ejecutar(() -> {
             eliminar.execute(id);
-            return queryPort.findAll();
+            return paginaActual();
         }, "Eliminando lote...");
     }
 
-    private void ejecutar(Supplier<List<Lote>> action, String operation) {
+    private PaginaLotes paginaActual() {
+        PaginaLotes result = queryPort.findAll(filtro);
+        if (result.content().isEmpty() && result.totalElements() > 0 && filtro.page() > 0) {
+            filtro = new FiltroLotes(filtro.estado(), filtro.socioId(), filtro.socio(), filtro.page() - 1, filtro.size());
+            result = queryPort.findAll(filtro);
+        }
+        return result;
+    }
+
+    private void ejecutar(Supplier<PaginaLotes> action, String operation) {
         if (consultando || cerrado) {
             return;
         }
@@ -84,7 +101,7 @@ public final class LotesController {
                     }
                     consultando = false;
                     if (error == null) {
-                        view.mostrarLotes(lotes);
+                        view.mostrarPaginaLotes(lotes);
                     } else {
                         informarError(error, operation != null);
                     }
@@ -98,7 +115,9 @@ public final class LotesController {
     private void informarError(Throwable error, boolean write) {
         Throwable cause = error.getCause() == null ? error : error.getCause();
         LOGGER.warn("Fallo en la operación de lotes: {}", cause.getMessage());
-        if (cause instanceof DatosLoteInvalidosException || cause instanceof LoteNoEncontradoException) {
+        if (cause instanceof ConflictoEdicionException) {
+            view.mostrarError("Este lote cambió desde la última consulta. Presiona Consultar y vuelve a editarlo.");
+        } else if (cause instanceof DatosLoteInvalidosException || cause instanceof LoteNoEncontradoException) {
             view.mostrarError(cause.getMessage());
         } else if (write) {
             view.mostrarError("No se confirmó el resultado. Consulta los lotes antes de repetir la operación.");

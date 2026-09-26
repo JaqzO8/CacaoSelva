@@ -16,10 +16,15 @@ public final class CacaoSelvaMonitorApplication {
         var clientConfig = ApiClientConfig.fromEnvironment();
         var monitorConfig = MonitorConfig.fromEnvironment();
         var adapter = HttpLoteQueryAdapter.create(clientConfig);
+        String token = setting("cacaoselva.api.token", "CACAOSELVA_API_TOKEN");
+        String user = setting("cacaoselva.api.username", "CACAOSELVA_API_USERNAME");
+        String password = setting("cacaoselva.api.password", "CACAOSELVA_API_PASSWORD");
+        if (token != null) adapter.setBearerToken(token);
+        else if (user != null && password != null) adapter.setCredentials(user, password);
         var scheduler = Executors.newSingleThreadScheduledExecutor(
                 Thread.ofPlatform().name("cacaoselva-monitor").factory());
         var monitor = new PendientesMonitor(new ContarLotesPendientesUseCase(adapter),
-                scheduler, monitorConfig.interval());
+                scheduler, monitorConfig.interval(), adapter::apiDisponible);
         LoggerFactory.getLogger(CacaoSelvaMonitorApplication.class).info(
                 "Monitor iniciado. API: {}. Intervalo: {} segundos. Timeout: {} segundos.",
                 clientConfig.baseUrl(), monitorConfig.interval().toSeconds(), clientConfig.timeout().toSeconds());
@@ -28,5 +33,11 @@ public final class CacaoSelvaMonitorApplication {
             adapter.close();
         }, "cacaoselva-monitor-shutdown"));
         monitor.start();
+    }
+
+    private static String setting(String property, String environment) {
+        String value = System.getProperty(property);
+        if (value == null || value.isBlank()) value = System.getenv(environment);
+        return value == null || value.isBlank() ? null : value;
     }
 }

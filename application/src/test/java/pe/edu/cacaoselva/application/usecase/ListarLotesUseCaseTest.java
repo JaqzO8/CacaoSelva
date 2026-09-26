@@ -21,7 +21,7 @@ class ListarLotesUseCaseTest {
 
     @Test
     void devuelveLosRegistrosDelRepositorio() {
-        Lote lote = new Lote(7, "Ana", new BigDecimal("120.5"), EstadoLote.PENDIENTE);
+        Lote lote = new Lote(7, 1, new BigDecimal("120.5"), EstadoLote.PENDIENTE);
         when(repository.findAll()).thenReturn(List.of(lote));
 
         assertEquals(List.of(LoteDto.from(lote)), new ListarLotesUseCase(repository).execute());

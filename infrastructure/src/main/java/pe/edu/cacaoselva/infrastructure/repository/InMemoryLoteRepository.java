@@ -9,9 +9,9 @@ import pe.edu.cacaoselva.domain.model.Lote;
 
 public final class InMemoryLoteRepository implements LoteRepository {
     private final List<Lote> lotes = List.of(
-            new Lote(1, "Ana", new BigDecimal("120.5"), EstadoLote.PENDIENTE),
-            new Lote(2, "Luis", new BigDecimal("80"), EstadoLote.LIQUIDADO),
-            new Lote(3, "Rosa", new BigDecimal("95.25"), EstadoLote.PENDIENTE));
+            new Lote(1, 1, new BigDecimal("120.5"), EstadoLote.PENDIENTE),
+            new Lote(2, 2, new BigDecimal("80"), EstadoLote.LIQUIDADO),
+            new Lote(3, 3, new BigDecimal("95.25"), EstadoLote.PENDIENTE));
 
     @Override
     public List<Lote> findAll() {

@@ -5,7 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import pe.edu.cacaoselva.domain.exception.DatosLoteInvalidosException;
+import pe.edu.cacaoselva.domain.exception.DatosSocioInvalidosException;
+import pe.edu.cacaoselva.domain.exception.ConflictoEdicionException;
 import pe.edu.cacaoselva.application.exception.PersistenciaLoteException;
+import pe.edu.cacaoselva.application.exception.CredencialesInvalidasException;
+import pe.edu.cacaoselva.application.exception.SocioNoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,9 +28,19 @@ public class ApiExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, error.getMessage());
     }
 
+    @ExceptionHandler(DatosSocioInvalidosException.class)
+    public ResponseEntity<ApiErrorResponse> datosSocioInvalidos(DatosSocioInvalidosException error) {
+        return response(HttpStatus.BAD_REQUEST, error.getMessage());
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> jsonInvalido(HttpMessageNotReadableException error) {
-        return response(HttpStatus.BAD_REQUEST, "JSON inválido: indique socio, pesoKg numérico y estado PENDIENTE o LIQUIDADO.");
+        return response(HttpStatus.BAD_REQUEST, "JSON inválido: verifique los campos enviados.");
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> solicitudInvalida(IllegalArgumentException error) {
+        return response(HttpStatus.BAD_REQUEST, error.getMessage() == null ? "Solicitud inválida." : error.getMessage());
     }
 
     @ExceptionHandler(PersistenciaLoteException.class)
@@ -34,8 +48,14 @@ public class ApiExceptionHandler {
         LOGGER.error("Fallo de persistencia de lotes", error);
         return response(HttpStatus.SERVICE_UNAVAILABLE, error.getMessage());
     }
+
     @ExceptionHandler(LoteNoEncontradoException.class)
     public ResponseEntity<ApiErrorResponse> noEncontrado(LoteNoEncontradoException error) {
+        return response(HttpStatus.NOT_FOUND, error.getMessage());
+    }
+
+    @ExceptionHandler(SocioNoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> socioNoEncontrado(SocioNoEncontradoException error) {
         return response(HttpStatus.NOT_FOUND, error.getMessage());
     }
 
@@ -47,6 +67,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiErrorResponse> tipoInvalido(MethodArgumentTypeMismatchException error) {
         return response(HttpStatus.BAD_REQUEST, new IdentificadorLoteInvalidoException().getMessage());
+    }
+
+    @ExceptionHandler(ConflictoEdicionException.class)
+    public ResponseEntity<ApiErrorResponse> conflicto(ConflictoEdicionException error) {
+        return response(HttpStatus.CONFLICT, error.getMessage());
+    }
+
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ApiErrorResponse> credencialesInvalidas(CredencialesInvalidasException error) {
+        return response(HttpStatus.UNAUTHORIZED, error.getMessage());
     }
 
     private ResponseEntity<ApiErrorResponse> response(HttpStatus status, String message) {

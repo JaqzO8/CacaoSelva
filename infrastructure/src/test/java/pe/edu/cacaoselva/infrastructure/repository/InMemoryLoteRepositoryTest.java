@@ -13,7 +13,7 @@ class InMemoryLoteRepositoryTest {
     void contieneLosTresLotesInicialesYDosPendientes() {
         assertEquals(3, repository.findAll().size());
         assertEquals(2, new ContarLotesPendientesUseCase(repository).execute());
-        assertEquals("Ana", repository.findById(1).orElseThrow().socio());
+        assertEquals(1, repository.findById(1).orElseThrow().socioId());
         assertEquals(new BigDecimal("95.25"), repository.findById(3).orElseThrow().pesoKg());
         assertTrue(repository.findById(999).isEmpty());
     }

@@ -1,10 +1,13 @@
 {
   "info": {
     "name": "CacaoSelva - Pruebas API",
-    "description": "Ejecutar completa sobre una base de pruebas recién migrada: 30 lotes y 20 pendientes. Incluye creación, modificación y eliminación de su propio registro.",
+    "description": "Ejecutar sobre una base recién migrada. Inicia sesión como admin y valida JWT, consultas, CRUD y errores.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
+    { "key": "adminUsername", "value": "admin", "type": "string" },
+    { "key": "adminPassword", "value": "", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
     {
       "key": "baseUrl",
       "value": "http://localhost:5080",
@@ -16,7 +19,22 @@
       "type": "string"
     }
   ],
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
   "item": [
+    {
+      "name": "P00 - Iniciar sesión",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/auth/login",
+        "auth": { "type": "noauth" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"usuario\": \"{{adminUsername}}\",\n  \"contrasena\": \"{{adminPassword}}\"\n}", "options": { "raw": { "language": "json" } } }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Inicio de sesión correcto\", () => pm.response.to.have.status(200));",
+        "pm.collectionVariables.set(\"token\", pm.response.json().token);"
+      ] } }]
+    },
     {
       "name": "P01 - Listar 30 lotes",
       "request": {
@@ -43,7 +61,7 @@
       ]
     },
     {
-      "name": "P02 - Buscar Ana",
+      "name": "P02 - Buscar primer lote",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/lotes/1",
@@ -61,7 +79,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "pm.test(\"Ana y peso exacto\", () => {const l=pm.response.json(); pm.expect(l.socio).to.eql(\"Ana\"); pm.expect(l.pesoKg).to.eql(120.5);});"
+              "pm.test(\"Socio y peso exacto\", () => {const l=pm.response.json(); pm.expect(l.socioId).to.eql(2); pm.expect(l.pesoKg).to.eql(120.5);});"
             ]
           }
         }
@@ -184,7 +202,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"socio\": \"Prueba Postman\",\n  \"pesoKg\": 12.375,\n  \"estado\": \"PENDIENTE\"\n}",
+          "raw": "{\n  \"socioId\": 1,\n  \"pesoKg\": 12.375,\n  \"estado\": \"PENDIENTE\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -199,7 +217,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-              "pm.test(\"Identidad generada\",()=>{const l=pm.response.json(); pm.expect(l.id).to.be.above(30); pm.collectionVariables.set(\"loteId\",l.id); pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/lotes/\"+l.id);});"
+              "pm.test(\"Identidad generada\",()=>{const l=pm.response.json(); pm.expect(l.id).to.be.above(30); pm.collectionVariables.set(\"loteId\",l.id); pm.collectionVariables.set(\"version\",l.version); pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/lotes/\"+l.id);});"
             ]
           }
         }
@@ -222,7 +240,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"socio\": \"Postman actualizado\",\n  \"pesoKg\": 25.125,\n  \"estado\": \"LIQUIDADO\"\n}",
+          "raw": "{\n  \"socioId\": 2,\n  \"pesoKg\": 25.125,\n  \"estado\": \"LIQUIDADO\",\n  \"version\": {{version}}\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -236,7 +254,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set(\"version\", pm.response.json().version);"
             ]
           }
         }
@@ -261,7 +280,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "pm.test(\"Cambios persistidos\",()=>{const l=pm.response.json();pm.expect(l.socio).to.eql(\"Postman actualizado\");pm.expect(l.pesoKg).to.eql(25.125);pm.expect(l.estado).to.eql(\"LIQUIDADO\");});"
+              "pm.test(\"Cambios persistidos\",()=>{const l=pm.response.json();pm.expect(l.socioId).to.eql(2);pm.expect(l.pesoKg).to.eql(25.125);pm.expect(l.estado).to.eql(\"LIQUIDADO\");});"
             ]
           }
         }
@@ -333,7 +352,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"socio\": \"Prueba invalida\",\n  \"pesoKg\": -1,\n  \"estado\": \"PENDIENTE\"\n}",
+          "raw": "{\n  \"socioId\": 1,\n  \"pesoKg\": -1,\n  \"estado\": \"PENDIENTE\"\n}",
           "options": {
             "raw": {
               "language": "json"

@@ -1,6 +1,6 @@
 # Validación de la versión con PostgreSQL
 
-Última validación: 23 de septiembre de 2026 (hora de Lima). Entorno local: Windows, JDK 21.0.8, Maven Wrapper 3.9.16 y PostgreSQL 17.6. También se ejecutó la verificación completa en Ubuntu mediante GitHub Actions, con JDK 21 y PostgreSQL 17.
+Última validación local: 26 de septiembre de 2026 (hora de Lima). Entorno: Windows, JDK 21.0.2 y PostgreSQL 18.4. Flyway informa que PostgreSQL 18 aún no está dentro de su matriz de soporte, pero las ocho migraciones y las pruebas de integración concluyeron correctamente en este entorno.
 
 ## Clonación e instalación pública
 
@@ -8,23 +8,23 @@ Se clonó [JaqzO8/CacaoSelva](https://github.com/JaqzO8/CacaoSelva) en una carpe
 
 1. `git clone https://github.com/JaqzO8/CacaoSelva.git` obtuvo el código publicado.
 2. `database.ps1 start -Port 55433` creó una instancia independiente y credenciales diferentes de las originales. Se eligió otro puerto para coexistir con la instalación de trabajo.
-3. `verify.ps1 -Gui -Postman` compiló los seis módulos y terminó con **97 pruebas Java y 22 aserciones Postman correctas**.
+3. `verify.ps1 -Gui -Postman` compiló los seis módulos y terminó con **118 pruebas Java y 23 aserciones Postman correctas**.
 4. Se comprobó la eliminación de la base temporal al finalizar y se detuvo únicamente la instancia de la clonación.
 5. Se verificaron los enlaces internos del manual y la exclusión de credenciales, bases locales, herramientas descargadas y resultados de compilación del historial publicado.
 
-La [ejecución remota verificada](https://github.com/JaqzO8/CacaoSelva/actions/runs/35957447040), correspondiente a la revisión `7f965ad`, terminó con **success**. Incluye los mismos 97 casos Java, 12 peticiones / 22 aserciones Postman y las comprobaciones de persistencia y recuperación. Sus reportes y captura JavaFX están en el artefacto `resultados-pruebas`. Las ejecuciones posteriores se consultan en [GitHub Actions](https://github.com/JaqzO8/CacaoSelva/actions/workflows/ci.yml).
+El historial del repositorio contiene ejecuciones anteriores de CI; este resultado local valida los cambios de esta revisión.
 
 ## Pruebas Java
 
 | Módulo | Pruebas ejecutadas | Resultado |
 |---|---:|---|
-| domain | 11 | Correctas |
+| domain | 30 | Correctas |
 | application | 24 | Correctas |
 | infrastructure | 27 | Correctas |
-| api (integración PostgreSQL) | 19 | Correctas |
+| api (integración PostgreSQL) | 21 | Correctas |
 | desktop (incluye controles JavaFX) | 9 | Correctas |
 | monitor | 7 | Correctas |
-| **Total** | **97** | **0 fallos, 0 errores, 0 omitidas** |
+| **Total** | **118** | **0 fallos, 0 errores, 0 omitidas** |
 
 Se validaron los seis casos de uso; IDs y datos inválidos; precisión decimal; repositorio JDBC; HTTP real; errores y timeout; CRUD completo contra PostgreSQL; filtros, creación, edición y recuperación en controles JavaFX; prevención de escrituras duplicadas; y ciclo de vida del monitor.
 
@@ -32,7 +32,7 @@ La captura de [Desktop](images/desktop.png) corresponde a la prueba gráfica con
 
 ## Colección Postman
 
-Ejecutada con Newman 6.2.1 sobre un JAR real de la API y una base PostgreSQL temporal: **12 peticiones, 22 aserciones, cero fallos**. Incluye consultas, creación, actualización, lectura de cambios, eliminación y validaciones 400/404.
+Ejecutada con Newman 6.2.1 sobre un JAR real de la API y una base PostgreSQL temporal: **13 peticiones, 23 aserciones, cero fallos**. Incluye autenticación JWT, consultas, creación, actualización con versión, lectura de cambios, eliminación y validaciones 400/404.
 
 No se utilizó la interfaz gráfica de Postman; se ejecutaron los scripts de la colección importable.
 

@@ -26,6 +26,13 @@ function Find-PgBin {
 function Start-Cluster($settings) {
     & (Join-Path $settings.bin 'pg_ctl') -D $cluster status *> $null
     if ($LASTEXITCODE -eq 0) { return }
+    $probe = [Net.Sockets.TcpClient]::new()
+    try {
+        $connect = $probe.BeginConnect('127.0.0.1', [int]$settings.port, $null, $null)
+        if ($connect.AsyncWaitHandle.WaitOne(500)) {
+            try { $probe.EndConnect($connect); return } catch { }
+        }
+    } finally { $probe.Dispose() }
     $arguments = @('-D', ('"{0}"' -f $cluster), '-l', ('"{0}"' -f (Join-Path $dataRoot 'postgres.log')),
         '-o', ('"-p {0} -h 127.0.0.1"' -f $settings.port), '-w', 'start')
     $options = @{ FilePath=(Join-Path $settings.bin 'pg_ctl'); ArgumentList=$arguments; PassThru=$true }
@@ -102,6 +109,38 @@ if ($Action -in @('init', 'start') -and -not (Test-Path -LiteralPath (Join-Path 
     ) | Set-Content -LiteralPath (Join-Path $projectRoot '.env.local') -Encoding utf8NoBOM
 }
 
+if ($Action -in @('init', 'start')) {
+    $envFile = Join-Path $projectRoot '.env.local'
+    $configured = @{}
+    if (Test-Path -LiteralPath $envFile) {
+        Get-Content -LiteralPath $envFile | ForEach-Object {
+            if ($_ -match '^([^#=]+)=(.*)$') { $configured[$matches[1]] = $matches[2] }
+        }
+    }
+    $projectDatabaseUrl = "jdbc:postgresql://127.0.0.1:$($settings.port)/cacaoselva"
+    if ($configured['CACAOSELVA_DB_URL'] -eq $projectDatabaseUrl -and
+        $configured['CACAOSELVA_DB_USER'] -eq $settings.user -and
+        $configured['CACAOSELVA_DB_PASSWORD'] -ne $settings.password) {
+        $lines = [System.Collections.Generic.List[string]]::new()
+        Get-Content -LiteralPath $envFile | ForEach-Object {
+            if ($_ -match '^CACAOSELVA_DB_PASSWORD=') { $lines.Add("CACAOSELVA_DB_PASSWORD=$($settings.password)") }
+            else { $lines.Add($_) }
+        }
+        $lines | Set-Content -LiteralPath $envFile -Encoding utf8NoBOM
+        $configured['CACAOSELVA_DB_PASSWORD'] = $settings.password
+    }
+    $newSettings = [System.Collections.Generic.List[string]]::new()
+    if (-not $configured['CACAOSELVA_JWT_SECRET']) {
+        $newSettings.Add('CACAOSELVA_JWT_SECRET=' + [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(48)).ToLowerInvariant())
+    }
+    if (-not $configured['CACAOSELVA_ADMIN_PASSWORD']) {
+        $newSettings.Add('CACAOSELVA_ADMIN_PASSWORD=' + [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24)).ToLowerInvariant())
+    }
+    if ($newSettings.Count -gt 0) {
+        Add-Content -LiteralPath $envFile -Value $newSettings -Encoding utf8NoBOM
+    }
+}
+
 switch ($Action) {
     { $_ -in @('init', 'start') } {
         Start-Cluster $settings
@@ -114,6 +153,14 @@ switch ($Action) {
     }
     'status' {
         & (Join-Path $settings.bin 'pg_ctl') -D $cluster status
-        if ($LASTEXITCODE -ne 0) { throw 'La instancia del proyecto está detenida.' }
+        if ($LASTEXITCODE -ne 0) {
+            $probe = [Net.Sockets.TcpClient]::new()
+            try {
+                $connect = $probe.BeginConnect('127.0.0.1', [int]$settings.port, $null, $null)
+                if (-not $connect.AsyncWaitHandle.WaitOne(500)) { throw 'La instancia del proyecto está detenida.' }
+                $probe.EndConnect($connect)
+                Write-Output "PostgreSQL responde en 127.0.0.1:$($settings.port). pg_ctl no pudo inspeccionar el proceso con los permisos actuales."
+            } finally { $probe.Dispose() }
+        }
     }
 }

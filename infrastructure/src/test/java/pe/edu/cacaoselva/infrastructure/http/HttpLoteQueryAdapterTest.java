@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HttpLoteQueryAdapterTest {
     private static final String VALID_JSON = """
-            [{"id":1,"socio":"Ana","pesoKg":120.5,"estado":"PENDIENTE"}]
+            [{"id":1,"socioId":1,"pesoKg":120.5,"estado":"PENDIENTE","version":1}]
             """;
     private HttpServer server;
     private ExecutorService executor;
@@ -70,7 +70,7 @@ class HttpLoteQueryAdapterTest {
         try (var adapter = adapter(Duration.ofSeconds(5))) {
             var lotes = adapter.findAll();
             assertEquals(1, lotes.size());
-            assertEquals("Ana", lotes.getFirst().socio());
+            assertEquals(1, lotes.getFirst().socioId());
             assertEquals(new BigDecimal("120.5"), lotes.getFirst().pesoKg());
             assertEquals(EstadoLote.PENDIENTE, lotes.getFirst().estado());
         }
@@ -96,8 +96,8 @@ class HttpLoteQueryAdapterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"no es JSON", "{}", "null", "[null]", "[{}]",
-            "[{\"id\":1,\"socio\":\"Ana\",\"pesoKg\":1,\"estado\":\"OTRO\"}]",
-            "[{\"id\":1.5,\"socio\":\"Ana\",\"pesoKg\":1,\"estado\":\"PENDIENTE\"}]",
+            "[{\"id\":1,\"socioId\":1,\"pesoKg\":1,\"estado\":\"OTRO\",\"version\":1}]",
+            "[{\"id\":1.5,\"socioId\":1,\"pesoKg\":1,\"estado\":\"PENDIENTE\",\"version\":1}]",
             "[] {}"})
     void traduceJsonInvalido(String body) {
         respond(200, body, Duration.ZERO);

@@ -21,14 +21,16 @@ pwsh -NoProfile -File scripts/database.ps1 start
 .\mvnw.cmd clean install
 
 # Terminal 1: API y migraciones de base de datos
-java -jar api/target/api-1.0.0-SNAPSHOT.jar
+pwsh -NoProfile -File scripts/run-api.ps1
 
 # Terminal 2: Desktop
 .\mvnw.cmd -pl desktop javafx:run
 
 # Terminal 3: Monitor
-java -jar monitor/target/monitor-1.0.0-SNAPSHOT.jar
+pwsh -NoProfile -File scripts/run-monitor.ps1
 ```
+
+Los scripts de API y Monitor cargan sus variables desde `.env.local` al proceso; no las publiques ni las pegues en comandos.
 
 Abre el `pom.xml` raíz en IntelliJ IDEA o la carpeta en VS Code con Extension Pack for Java. Selecciona JDK 21. No se usa Lombok ni Docker.
 
@@ -118,19 +120,26 @@ Base: `http://localhost:5080`.
 | Método y ruta | Respuesta |
 |---|---|
 | `GET /lotes` | 200, lista completa ordenada por ID |
+| `GET /lotes?page=0&size=20` | 200, resultados paginados; filtros opcionales `estado`, `socioId`, `socio` |
 | `GET /lotes/{id}` | 200, lote; 404 si no existe |
+| `GET /lotes/{id}/historial` | 200, eventos de auditoría del lote |
 | `GET /lotes/pendientes/conteo` | 200, `{"pendientes":20}` inicialmente |
+| `GET /socios` y `GET /socios/buscar?dni=...` | 200, socios registrados |
+| `POST /socios` | 201, nuevo socio (solo ADMIN) |
+| `POST /auth/login` | 200, entrega token JWT |
+| `POST /auth/usuarios` | 201, usuario nuevo (solo ADMIN) |
+| `GET /actuator/health` | 200, estado de API y PostgreSQL |
 | `POST /lotes` | 201, lote creado y cabecera Location |
-| `PUT /lotes/{id}` | 200, reemplazo de socio/peso/estado; 404 si no existe |
+| `PUT /lotes/{id}` | 200, reemplazo de socio/peso/estado/version; 409 si hubo una edición simultánea |
 | `DELETE /lotes/{id}` | 204 sin cuerpo; 404 si no existe |
 
-Ejemplo de cuerpo para crear o actualizar; el ID lo genera PostgreSQL:
+Excepto login y salud, las rutas requieren `Authorization: Bearer <token>`. Desktop pide inicio de sesión; el usuario inicial es `admin` y su contraseña aleatoria está en `CACAOSELVA_ADMIN_PASSWORD` dentro de `.env.local`. No publiques ni compartas ese archivo. Para crear un lote, usa el ID de un socio existente:
 
 ```json
-{"socio":"Nuevo socio","pesoKg":125.375,"estado":"PENDIENTE"}
+{"socioId":1,"pesoKg":125.375,"estado":"PENDIENTE"}
 ```
 
-Los IDs deben ser enteros positivos; socio admite hasta 120 caracteres; peso debe ser positivo, hasta `999999999.999` y con máximo tres decimales significativos; estado debe ser `PENDIENTE` o `LIQUIDADO`. Campos desconocidos, JSON incorrecto y datos inválidos devuelven 400. No se utiliza `double` para almacenar pesos.
+Los IDs deben ser enteros positivos; el peso debe ser positivo, hasta `999999999.999` y con máximo tres decimales; estado debe ser `PENDIENTE` o `LIQUIDADO`. Las actualizaciones envían la versión recibida en el GET para detectar conflictos. Campos desconocidos, JSON incorrecto y datos inválidos devuelven 400. No se utiliza `double` para almacenar pesos.
 
 Errores de negocio y persistencia se traducen en `ApiExceptionHandler`:
 
@@ -160,6 +169,8 @@ Consulta inmediatamente y luego utiliza `scheduleWithFixedDelay`: espera el inte
 | API de ambos clientes | `CACAOSELVA_API_BASE_URL` | `cacaoselva.api.baseUrl` | `http://localhost:5080` |
 | Timeout HTTP | `CACAOSELVA_API_TIMEOUT_SECONDS` | `cacaoselva.api.timeoutSeconds` | 5 segundos |
 | Intervalo Monitor | `CACAOSELVA_MONITOR_INTERVAL_SECONDS` | `cacaoselva.monitor.intervalSeconds` | 10 segundos; mínimo 1 |
+| Token Monitor | `CACAOSELVA_API_TOKEN` | `cacaoselva.api.token` | sin valor; configura un token JWT |
+| Cuenta Monitor | `CACAOSELVA_API_USERNAME` / `CACAOSELVA_API_PASSWORD` | `cacaoselva.api.username` / `cacaoselva.api.password` | sin valor; alternativa al token |
 
 Las propiedades JVM tienen prioridad sobre las variables de entorno. Ejemplo:
 

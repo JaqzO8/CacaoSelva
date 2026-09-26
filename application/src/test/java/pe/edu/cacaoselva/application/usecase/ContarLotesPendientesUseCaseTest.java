@@ -22,9 +22,9 @@ class ContarLotesPendientesUseCaseTest {
     @Test
     void cuentaSoloLosDosPendientes() {
         when(queryPort.findAll()).thenReturn(List.of(
-                new Lote(1, "Ana", new BigDecimal("120.5"), EstadoLote.PENDIENTE),
-                new Lote(2, "Luis", new BigDecimal("80"), EstadoLote.LIQUIDADO),
-                new Lote(3, "Rosa", new BigDecimal("95.25"), EstadoLote.PENDIENTE)));
+                new Lote(1, 1, new BigDecimal("120.5"), EstadoLote.PENDIENTE),
+                new Lote(2, 2, new BigDecimal("80"), EstadoLote.LIQUIDADO),
+                new Lote(3, 3, new BigDecimal("95.25"), EstadoLote.PENDIENTE)));
 
         assertEquals(2, new ContarLotesPendientesUseCase(queryPort).execute());
     }
@@ -39,7 +39,7 @@ class ContarLotesPendientesUseCaseTest {
     @Test
     void devuelveCeroSiTodosEstanLiquidados() {
         when(queryPort.findAll()).thenReturn(List.of(
-                new Lote(2, "Luis", new BigDecimal("80"), EstadoLote.LIQUIDADO)));
+                new Lote(2, 2, new BigDecimal("80"), EstadoLote.LIQUIDADO)));
 
         assertEquals(0, new ContarLotesPendientesUseCase(queryPort).execute());
     }

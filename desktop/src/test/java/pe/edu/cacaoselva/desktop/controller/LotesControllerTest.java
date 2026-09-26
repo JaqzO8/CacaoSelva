@@ -16,6 +16,9 @@ import pe.edu.cacaoselva.application.usecase.CrearLoteUseCase;
 import pe.edu.cacaoselva.application.usecase.ActualizarLoteUseCase;
 import pe.edu.cacaoselva.application.usecase.EliminarLoteUseCase;
 import pe.edu.cacaoselva.application.dto.GuardarLoteCommand;
+import pe.edu.cacaoselva.application.dto.FiltroLotes;
+import pe.edu.cacaoselva.application.dto.PaginaLotes;
+import pe.edu.cacaoselva.application.dto.LoteDto;
 import pe.edu.cacaoselva.desktop.view.LotesView;
 import pe.edu.cacaoselva.domain.model.EstadoLote;
 import pe.edu.cacaoselva.domain.model.Lote;
@@ -40,23 +43,23 @@ class LotesControllerTest {
 
     @Test
     void ejecutaLaConsultaFueraDeLaUiYPublicaElResultadoEnElla() {
-        List<Lote> lotes = List.of(new Lote(1, "Ana", new BigDecimal("120.5"), EstadoLote.PENDIENTE));
-        when(queryPort.findAll()).thenReturn(lotes);
+        List<Lote> lotes = List.of(new Lote(1, 1, new BigDecimal("120.5"), EstadoLote.PENDIENTE));
+        when(queryPort.findAll(any(FiltroLotes.class))).thenReturn(page(lotes));
 
         controller.consultar();
         verify(view).mostrarConsultando();
         verifyNoInteractions(queryPort);
         background.remove().run();
-        verify(queryPort).findAll();
-        verify(view, never()).mostrarLotes(anyList());
+        verify(queryPort).findAll(any(FiltroLotes.class));
+        verify(view, never()).mostrarPaginaLotes(any(PaginaLotes.class));
         ui.remove().run();
-        verify(view).mostrarLotes(lotes);
+        verify(view).mostrarPaginaLotes(page(lotes));
     }
 
     @Test
     void informaElFalloYPermiteVolverAConsultar() {
-        when(queryPort.findAll()).thenThrow(new ApiNoDisponibleException("Sin conexión"))
-                .thenReturn(List.of());
+        when(queryPort.findAll(any(FiltroLotes.class))).thenThrow(new ApiNoDisponibleException("Sin conexión"))
+                .thenReturn(page(List.of()));
         controller.consultar();
         background.remove().run();
         ui.remove().run();
@@ -65,8 +68,8 @@ class LotesControllerTest {
         controller.consultar();
         background.remove().run();
         ui.remove().run();
-        verify(queryPort, times(2)).findAll();
-        verify(view).mostrarLotes(List.of());
+        verify(queryPort, times(2)).findAll(any(FiltroLotes.class));
+        verify(view).mostrarPaginaLotes(page(List.of()));
     }
 
     @Test
@@ -83,7 +86,7 @@ class LotesControllerTest {
         controller.cerrar();
         background.remove().run();
         ui.forEach(Runnable::run);
-        verify(view, never()).mostrarLotes(anyList());
+        verify(view, never()).mostrarPaginaLotes(any(PaginaLotes.class));
         verify(view, never()).mostrarError();
     }
 
@@ -97,24 +100,24 @@ class LotesControllerTest {
 
     @Test
     void guardaUnaSolaVezYActualizaLosDatos() {
-        var command = new GuardarLoteCommand("Nuevo", BigDecimal.ONE, EstadoLote.PENDIENTE);
-        Lote created = new Lote(31, "Nuevo", BigDecimal.ONE, EstadoLote.PENDIENTE);
+        var command = new GuardarLoteCommand(1, BigDecimal.ONE, EstadoLote.PENDIENTE);
+        Lote created = new Lote(31, 1, BigDecimal.ONE, EstadoLote.PENDIENTE);
         when(writer.create(command.toDomain())).thenReturn(created);
-        when(queryPort.findAll()).thenReturn(List.of(created));
+        when(queryPort.findAll(any(FiltroLotes.class))).thenReturn(page(List.of(created)));
         controller.guardar(null, command);
         controller.guardar(null, command);
         verifyNoInteractions(writer);
         background.remove().run();
         ui.remove().run();
         verify(writer, times(1)).create(command.toDomain());
-        verify(view).mostrarLotes(List.of(created));
+        verify(view).mostrarPaginaLotes(page(List.of(created)));
     }
 
     @Test
     void siFallaLaLecturaPosteriorNoRepiteLaEscritura() {
-        var command = new GuardarLoteCommand("Nuevo", BigDecimal.ONE, EstadoLote.PENDIENTE);
-        when(writer.create(command.toDomain())).thenReturn(new Lote(31, "Nuevo", BigDecimal.ONE, EstadoLote.PENDIENTE));
-        when(queryPort.findAll()).thenThrow(new ApiNoDisponibleException("Sin conexión"));
+        var command = new GuardarLoteCommand(1, BigDecimal.ONE, EstadoLote.PENDIENTE);
+        when(writer.create(command.toDomain())).thenReturn(new Lote(31, 1, BigDecimal.ONE, EstadoLote.PENDIENTE));
+        when(queryPort.findAll(any(FiltroLotes.class))).thenThrow(new ApiNoDisponibleException("Sin conexión"));
         controller.guardar(null, command);
         background.remove().run();
         ui.remove().run();
@@ -124,10 +127,15 @@ class LotesControllerTest {
 
     @Test
     void muestraValidacionSinEnviarDatosInvalidos() {
-        controller.guardar(null, new GuardarLoteCommand("Ana", BigDecimal.ZERO, EstadoLote.PENDIENTE));
+        controller.guardar(null, new GuardarLoteCommand(1, BigDecimal.ZERO, EstadoLote.PENDIENTE));
         background.remove().run();
         ui.remove().run();
         verifyNoInteractions(writer, queryPort);
         verify(view).mostrarError(contains("peso"));
+    }
+
+    private PaginaLotes page(List<Lote> content) {
+        return new PaginaLotes(content.stream().map(LoteDto::from).toList(), 0, 20,
+                content.size(), content.isEmpty() ? 0 : 1);
     }
 }

@@ -19,6 +19,7 @@ $monitorProcess = $null
 $oldUrl = $env:CACAOSELVA_DB_URL
 $oldUser = $env:CACAOSELVA_DB_USER
 $oldPassword = $env:CACAOSELVA_DB_PASSWORD
+$oldApiToken = $env:CACAOSELVA_API_TOKEN
 $probe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
 try { $probe.Start() } finally { $probe.Stop() }
 
@@ -48,7 +49,7 @@ function Wait-Condition([scriptblock] $condition, [string] $description) {
 }
 
 function Test-ApiReady {
-    try { return (Invoke-WebRequest "$baseUrl/lotes" -TimeoutSec 2 -SkipHttpErrorCheck).StatusCode -eq 200 }
+    try { return (Invoke-WebRequest "$baseUrl/actuator/health" -TimeoutSec 2 -SkipHttpErrorCheck).StatusCode -eq 200 }
     catch [System.Net.Http.HttpRequestException] { return $false }
     catch [System.Threading.Tasks.TaskCanceledException] { return $false }
 }
@@ -65,19 +66,25 @@ try {
     $env:CACAOSELVA_DB_PASSWORD = $env:CACAOSELVA_TEST_DB_PASSWORD
     $apiProcess = Start-Jar 'api' 'api'
     Wait-Condition { Test-ApiReady } 'inicio de API'
+    $login = Invoke-RestMethod "$baseUrl/auth/login" -Method Post -ContentType 'application/json' `
+        -Body (@{ usuario='admin'; contrasena=$env:CACAOSELVA_ADMIN_PASSWORD } | ConvertTo-Json)
+    $authHeaders = @{ Authorization = "Bearer $($login.token)" }
+    $env:CACAOSELVA_API_TOKEN = $login.token
+    if ((Invoke-WebRequest "$baseUrl/lotes" -SkipHttpErrorCheck -TimeoutSec 5).StatusCode -ne 401) { throw 'La API permite consultar lotes sin token.' }
     $cases = @{ '/lotes'=200; '/lotes/1'=200; '/lotes/999'=404; '/lotes/abc'=400; '/lotes/0'=400; '/lotes/pendientes/conteo'=200 }
     foreach ($path in $cases.Keys) {
-        $response = Invoke-WebRequest ($baseUrl + $path) -SkipHttpErrorCheck -TimeoutSec 5
+        $response = Invoke-WebRequest ($baseUrl + $path) -Headers $authHeaders -SkipHttpErrorCheck -TimeoutSec 5
         if ($response.StatusCode -ne $cases[$path]) { throw "Código incorrecto: $path" }
         Write-Output "PASS GET $path -> $($response.StatusCode)"
     }
-    $lotes = Invoke-RestMethod "$baseUrl/lotes"
+    $lotes = Invoke-RestMethod "$baseUrl/lotes" -Headers $authHeaders
     if ($lotes.Count -ne 30) { throw 'Se esperaban los 30 lotes iniciales.' }
     if ($RunPostmanCollection) {
         $collection = Join-Path $projectRoot 'docs/postman/CacaoSelva.postman_collection.json'
         $report = Join-Path $logDirectory 'postman-results.json'
         $newman = Get-Command newman -ErrorAction SilentlyContinue
-        $newmanArguments = @('run', $collection, '--env-var', "baseUrl=$baseUrl", '--reporters', 'cli,json',
+        $newmanArguments = @('run', $collection, '--env-var', "baseUrl=$baseUrl", '--env-var', 'adminUsername=admin',
+            '--env-var', "adminPassword=$env:CACAOSELVA_ADMIN_PASSWORD", '--reporters', 'cli,json',
             '--reporter-json-export', $report, '--timeout-request', '5000')
         if ($newman) {
             & $newman.Source @newmanArguments
@@ -92,8 +99,8 @@ try {
         }
         if ($LASTEXITCODE -ne 0) { throw 'Falló la colección Postman.' }
     }
-    $body = @{ socio='Prueba de persistencia'; pesoKg=44.125; estado='PENDIENTE' } | ConvertTo-Json
-    $lote = Invoke-RestMethod "$baseUrl/lotes" -Method Post -ContentType 'application/json' -Body $body
+    $body = @{ socioId=1; pesoKg=44.125; estado='PENDIENTE' } | ConvertTo-Json
+    $lote = Invoke-RestMethod "$baseUrl/lotes" -Method Post -Headers $authHeaders -ContentType 'application/json' -Body $body
     $monitorProcess = Start-Jar 'monitor' 'monitor'
     Wait-Condition { (Read-MonitorLog) -match 'Pendientes: 21' } 'monitor conectado'
     Stop-Process -Id $apiProcess.Id
@@ -103,13 +110,13 @@ try {
     if ($monitorProcess.HasExited) { throw 'El monitor se cerró tras el fallo.' }
     $apiProcess = Start-Jar 'api' 'api-restarted'
     Wait-Condition { Test-ApiReady } 'reinicio de API'
-    $persisted = Invoke-RestMethod "$baseUrl/lotes/$($lote.id)"
-    if ($persisted.socio -ne 'Prueba de persistencia' -or $persisted.pesoKg -ne 44.125) { throw 'No se conservó el lote.' }
-    $afterRestart = Invoke-RestMethod "$baseUrl/lotes"
+    $persisted = Invoke-RestMethod "$baseUrl/lotes/$($lote.id)" -Headers $authHeaders
+    if ($persisted.socioId -ne 1 -or $persisted.pesoKg -ne 44.125) { throw 'No se conservó el lote.' }
+    $afterRestart = Invoke-RestMethod "$baseUrl/lotes" -Headers $authHeaders
     if ($afterRestart.Count -ne 31) { throw "Se esperaban 31 registros tras reiniciar; llegaron $($afterRestart.Count)." }
     Write-Output 'PASS Persistencia tras reinicio; migraciones sin duplicados'
     Wait-Condition { (Read-MonitorLog) -match 'recuperada' } 'recuperación del monitor'
-    Invoke-RestMethod "$baseUrl/lotes/$($lote.id)" -Method Delete | Out-Null
+    Invoke-RestMethod "$baseUrl/lotes/$($lote.id)" -Method Delete -Headers $authHeaders | Out-Null
     Wait-Condition { (Read-MonitorLog) -match 'Pendientes: 20' } 'detección del cambio de pendientes'
     Write-Output 'PASS Monitor detecta caída, se recupera y observa el cambio 21 -> 20'
     Write-Output "Logs: $logDirectory"
@@ -123,4 +130,5 @@ try {
     $env:CACAOSELVA_DB_URL = $oldUrl
     $env:CACAOSELVA_DB_USER = $oldUser
     $env:CACAOSELVA_DB_PASSWORD = $oldPassword
+    $env:CACAOSELVA_API_TOKEN = $oldApiToken
 }

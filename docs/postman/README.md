@@ -1,6 +1,6 @@
 # CacaoSelva - Pruebas API
 
-Importa `CacaoSelva.postman_collection.json` en Postman. La colección contiene 12 peticiones y 22 aserciones para consultas, CRUD y validación de errores. No requiere autenticación.
+Importa `CacaoSelva.postman_collection.json` en Postman. La colección contiene login JWT y peticiones de lectura, CRUD y validación de errores. Configura la variable `adminPassword` con `CACAOSELVA_ADMIN_PASSWORD` desde tu `.env.local`; la colección guarda el token solo en una variable de colección.
 
 ## Ejecución automática recomendada
 
@@ -16,15 +16,15 @@ El script crea una base temporal, ejecuta Maven, inicia la API de prueba en el p
 
 1. Inicia la API desde la raíz del proyecto.
 2. Importa el archivo de esta carpeta.
-3. Configura `baseUrl = http://localhost:5080` en variables de colección.
-4. Ejecuta la colección completa y en orden; P06 guarda automáticamente el ID que utilizarán P07–P10.
+3. Configura `baseUrl = http://localhost:5080` y `adminPassword` en variables de colección.
+4. Ejecuta la colección completa y en orden; P00 inicia sesión. P06 guarda automáticamente el ID y la versión usados por P07–P10.
 
 La colección espera una base con la carga inicial: 30 lotes y 20 pendientes. Si modificaste los datos normales, usa la automatización con una base aislada para obtener resultados repetibles. Las peticiones CRUD crean y eliminan su propio registro de prueba.
 
 | Caso | Método y ruta | Resultado |
 |---|---|---|
 | P01 | GET /lotes | 200, 30 lotes y 20 pendientes |
-| P02 | GET /lotes/1 | 200, Ana, 120.5 kg |
+| P02 | GET /lotes/1 | 200, socio 2, 120.5 kg |
 | P03 | GET /lotes/999 | 404, error consistente |
 | P04A | GET /lotes/abc | 400, error consistente |
 | P04B | GET /lotes/0 | 400, error consistente |

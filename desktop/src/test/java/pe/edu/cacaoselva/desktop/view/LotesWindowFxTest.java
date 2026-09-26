@@ -9,6 +9,9 @@ import pe.edu.cacaoselva.domain.model.DatosLote;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ComboBox;
 import pe.edu.cacaoselva.domain.model.EstadoLote;
+import pe.edu.cacaoselva.domain.model.DatosSocio;
+import pe.edu.cacaoselva.domain.model.Socio;
+import pe.edu.cacaoselva.application.dto.GuardarLoteCommand;
 import java.awt.image.BufferedImage;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -46,9 +49,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnabledIfSystemProperty(named = "cacaoselva.test.javafx", matches = "true")
 class LotesWindowFxTest {
     private static final String LOTES = """
-            [{"id":1,"socio":"Ana","pesoKg":120.5,"estado":"PENDIENTE"},
-             {"id":2,"socio":"Luis","pesoKg":80,"estado":"LIQUIDADO"},
-             {"id":3,"socio":"Rosa","pesoKg":95.25,"estado":"PENDIENTE"}]
+            [{"id":1,"socioId":1,"pesoKg":120.5,"estado":"PENDIENTE","version":1},
+             {"id":2,"socioId":2,"pesoKg":80,"estado":"LIQUIDADO","version":1},
+             {"id":3,"socioId":3,"pesoKg":95.25,"estado":"PENDIENTE","version":1}]
             """;
     private LotesWindow view;
     private Stage stage;
@@ -75,6 +78,35 @@ class LotesWindowFxTest {
         AtomicInteger status = new AtomicInteger(200);
         ObjectMapper json = new ObjectMapper();
         var lotes = new CopyOnWriteArrayList<>(List.of(json.readValue(LOTES, Lote[].class)));
+        server.createContext("/auth/login", exchange -> {
+            try (exchange) {
+                byte[] bytes = "{\"token\":\"fx-test-token\"}".getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            }
+        });
+        server.createContext("/actuator/health", exchange -> {
+            try (exchange) {
+                byte[] bytes = "{\"status\":\"UP\"}".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            }
+        });
+        server.createContext("/socios", exchange -> {
+            try (exchange) {
+                var socios = List.of(
+                        java.util.Map.of("id", 1, "dni", "11111111", "nombre", "Ana", "zona", "Zona", "telefono", ""),
+                        java.util.Map.of("id", 2, "dni", "22222222", "nombre", "Luis", "zona", "Zona", "telefono", ""),
+                        java.util.Map.of("id", 3, "dni", "33333333", "nombre", "Rosa", "zona", "Zona", "telefono", ""),
+                        java.util.Map.of("id", 4, "dni", "44444444", "nombre", "Paco", "zona", "Zona", "telefono", ""),
+                        java.util.Map.of("id", 5, "dni", "55555555", "nombre", "Luz", "zona", "Zona", "telefono", ""));
+                byte[] bytes = json.writeValueAsBytes(socios);
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            }
+        });
         server.createContext("/lotes", exchange -> {
             try (exchange) {
                 int code = status.get();
@@ -86,13 +118,22 @@ class LotesWindowFxTest {
                         lotes.removeIf(lote -> lote.id() == id);
                         code = 204;
                     } else {
-                        DatosLote datos = json.readValue(exchange.getRequestBody(), DatosLote.class);
-                        Lote updated = new Lote(id, datos.socio(), datos.pesoKg(), datos.estado());
+                        GuardarLoteCommand datos = json.readValue(exchange.getRequestBody(), GuardarLoteCommand.class);
+                        int version = method.equals("POST") ? 1 : lotes.stream().filter(lote -> lote.id() == id).mapToInt(Lote::version).findFirst().orElse(0) + 1;
+                        Lote updated = new Lote(id, datos.socioId(), datos.pesoKg(), datos.estado(), version);
                         lotes.removeIf(lote -> lote.id() == id);
                         lotes.add(updated);
                         response = updated;
                         code = method.equals("POST") ? 201 : 200;
                     }
+                } else if (code == 200) {
+                    var params = exchange.getRequestURI().getQuery() == null ? "" : exchange.getRequestURI().getQuery();
+                    String socioFilter = params.contains("socioId=") ? params.substring(params.indexOf("socioId=") + 8).split("&")[0] : null;
+                    var content = lotes.stream().filter(lote -> socioFilter == null || Integer.toString(lote.socioId()).equals(socioFilter))
+                            .map(lote -> java.util.Map.of("id", lote.id(), "socioId", lote.socioId(), "pesoKg", lote.pesoKg(),
+                                    "estado", lote.estado().name(), "version", lote.version())).toList();
+                    response = java.util.Map.of("content", content, "page", 0, "size", 20,
+                            "totalElements", content.size(), "totalPages", content.isEmpty() ? 0 : 1);
                 }
                 byte[] bytes = json.writeValueAsBytes(response);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -104,11 +145,19 @@ class LotesWindowFxTest {
         URI url = URI.create("http://127.0.0.1:" + server.getAddress().getPort());
         try (var adapter = HttpLoteQueryAdapter.create(new ApiClientConfig(url, Duration.ofSeconds(2)));
              var worker = Executors.newVirtualThreadPerTaskExecutor()) {
+            adapter.setCredentials("admin", "test-password");
             onFx(() -> {
                 view = new LotesWindow();
+                view.mostrarSocios(List.of(
+                        new Socio(1, new DatosSocio("11111111", "Ana", "Zona", "")),
+                        new Socio(2, new DatosSocio("22222222", "Luis", "Zona", "")),
+                        new Socio(3, new DatosSocio("33333333", "Rosa", "Zona", "")),
+                        new Socio(4, new DatosSocio("44444444", "Paco", "Zona", "")),
+                        new Socio(5, new DatosSocio("55555555", "Luz", "Zona", ""))));
                 controller = new LotesController(adapter, view, worker, Platform::runLater,
                         new CrearLoteUseCase(adapter), new ActualizarLoteUseCase(adapter), new EliminarLoteUseCase(adapter));
                 view.setOnConsultar(controller::consultar);
+                view.setOnBuscar(controller::consultar);
                 view.setOnGuardar(controller::guardar);
                 view.setOnEliminar(controller::eliminar);
                 Scene scene = new Scene(view, 1020, 680);
@@ -128,8 +177,13 @@ class LotesWindowFxTest {
                 assertEquals(3, table().getItems().size());
                 assertFalse(button().isDisabled());
                 TextField filter = (TextField) view.lookup("#filtro-socio");
-                filter.setText("Rosa");
+                filter.setText("3");
+                return null;
+            });
+            esperarEstado("1 lotes recibidos.");
+            onFx(() -> {
                 assertEquals(1, table().getItems().size());
+                TextField filter = (TextField) view.lookup("#filtro-socio");
                 filter.clear();
                 guardarCaptura();
                 return null;
@@ -149,7 +203,7 @@ class LotesWindowFxTest {
             esperarEstado("3 lotes recibidos.");
             onFx(() -> {
                 assertEquals(3, table().getItems().size());
-                ((TextField) view.lookup("#socio")).setText("Socio nuevo");
+                ((ComboBox<Socio>) view.lookup("#socio")).setValue(new Socio(4, new DatosSocio("44444444", "Paco", "Zona", "")));
                 ((TextField) view.lookup("#peso")).setText("12.375");
                 ((Button) view.lookup("#guardar")).fire();
                 return null;
@@ -157,14 +211,14 @@ class LotesWindowFxTest {
             esperarEstado("4 lotes recibidos.");
             onFx(() -> {
                 table().getSelectionModel().select(3);
-                assertEquals("Socio nuevo", ((TextField) view.lookup("#socio")).getText());
-                ((TextField) view.lookup("#socio")).setText("Socio editado");
+                assertEquals(4, ((ComboBox<Socio>) view.lookup("#socio")).getValue().id());
+                ((ComboBox<Socio>) view.lookup("#socio")).setValue(new Socio(5, new DatosSocio("55555555", "Luz", "Zona", "")));
                 ((Button) view.lookup("#guardar")).fire();
                 return null;
             });
             esperarEstado("4 lotes recibidos.");
             onFx(() -> {
-                assertTrue(table().getItems().stream().anyMatch(item -> ((Lote) item).socio().equals("Socio editado")));
+                assertTrue(table().getItems().stream().anyMatch(item -> ((Lote) item).socioId().equals(5)));
                 controller.eliminar(4);
                 return null;
             });

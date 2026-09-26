@@ -32,6 +32,21 @@ public record ApiClientConfig(URI baseUrl, Duration timeout) {
         return URI.create(url.endsWith("/") ? url : url + "/").resolve("lotes");
     }
 
+    public URI sociosUri() {
+        String url = baseUrl.toString();
+        return URI.create(url.endsWith("/") ? url : url + "/").resolve("socios");
+    }
+
+    public URI authUri() {
+        String url = baseUrl.toString();
+        return URI.create(url.endsWith("/") ? url : url + "/").resolve("auth/login");
+    }
+
+    public URI healthUri() {
+        String url = baseUrl.toString();
+        return URI.create(url.endsWith("/") ? url : url + "/").resolve("actuator/health");
+    }
+
     private static String setting(String property, String environment, String fallback) {
         String value = System.getProperty(property);
         if (value == null || value.isBlank()) {

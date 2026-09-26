@@ -27,7 +27,7 @@ class BuscarLotePorIdUseCaseTest {
 
     @Test
     void devuelveElLoteExistente() {
-        Lote ana = new Lote(1, "Ana", new BigDecimal("120.5"), EstadoLote.PENDIENTE);
+        Lote ana = new Lote(1, 1, new BigDecimal("120.5"), EstadoLote.PENDIENTE);
         when(repository.findById(1)).thenReturn(Optional.of(ana));
 
         assertEquals(LoteDto.from(ana), new BuscarLotePorIdUseCase(repository).execute(1));

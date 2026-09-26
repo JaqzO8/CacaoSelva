@@ -23,25 +23,25 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class EscribirLotesUseCaseTest {
     @Mock private LoteWritePort writer;
-    private final GuardarLoteCommand command = new GuardarLoteCommand(" Ana ", new BigDecimal("12.375"), EstadoLote.PENDIENTE);
+    private final GuardarLoteCommand command = new GuardarLoteCommand(1, new BigDecimal("12.375"), EstadoLote.PENDIENTE);
 
     @Test
-    void creaConIdGeneradoYNormalizaSocio() {
-        when(writer.create(command.toDomain())).thenReturn(new Lote(31, "Ana", command.pesoKg(), command.estado()));
+    void creaConIdGeneradoYSocioId() {
+        when(writer.create(command.toDomain())).thenReturn(new Lote(31, 1, command.pesoKg(), command.estado()));
         var result = new CrearLoteUseCase(writer).execute(command);
         assertEquals(31, result.id());
-        assertEquals("Ana", result.socio());
+        assertEquals(1, result.socioId());
     }
 
     @Test
     void actualizaSinCambiarLaIdentidad() {
-        when(writer.update(1, command.toDomain())).thenReturn(Optional.of(new Lote(1, "Ana", command.pesoKg(), command.estado())));
+        when(writer.update(1, command.toDomain(), command.version())).thenReturn(Optional.of(new Lote(1, 1, command.pesoKg(), command.estado())));
         assertEquals(1, new ActualizarLoteUseCase(writer).execute(1, command).id());
     }
 
     @Test
     void actualizarInexistenteLanzaExcepcionEspecifica() {
-        when(writer.update(999, command.toDomain())).thenReturn(Optional.empty());
+        when(writer.update(999, command.toDomain(), command.version())).thenReturn(Optional.empty());
         assertThrows(LoteNoEncontradoException.class, () -> new ActualizarLoteUseCase(writer).execute(999, command));
     }
 
@@ -69,7 +69,7 @@ class EscribirLotesUseCaseTest {
     @ParameterizedTest
     @ValueSource(strings = {"0", "-1", "1.0001", "1000000000"})
     void rechazaPesoFueraDelContratoSinEscribir(String peso) {
-        var invalid = new GuardarLoteCommand("Ana", new BigDecimal(peso), EstadoLote.PENDIENTE);
+        var invalid = new GuardarLoteCommand(1, new BigDecimal(peso), EstadoLote.PENDIENTE);
         assertThrows(DatosLoteInvalidosException.class, () -> new CrearLoteUseCase(writer).execute(invalid));
         assertThrows(DatosLoteInvalidosException.class, () -> new ActualizarLoteUseCase(writer).execute(1, invalid));
         verifyNoInteractions(writer);

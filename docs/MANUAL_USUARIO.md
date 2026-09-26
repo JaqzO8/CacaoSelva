@@ -66,7 +66,7 @@ Para ver tus credenciales localmente:
 Get-Content .env.local
 ```
 
-Cada clonación nueva genera contraseñas distintas. `.env.local` y `data/database.json` contienen credenciales; `data/postgres/` contiene la base. Git los ignora. Conserva estos archivos en tu equipo y no los añadas al repositorio ni los compartas en incidencias. El usuario de aplicación no es superusuario.
+Cada clonación nueva genera contraseñas distintas. `.env.local` contiene la conexión PostgreSQL, el secreto JWT y la contraseña de inicio para `admin` (variable `CACAOSELVA_ADMIN_PASSWORD`). `data/database.json` contiene credenciales administrativas de PostgreSQL; `data/postgres/` contiene la base. Git los ignora. Conserva estos archivos en tu equipo y no los añadas al repositorio ni los compartas. El usuario de base de datos de aplicación no es superusuario.
 
 Si el puerto 55432 ya está ocupado, **en la primera inicialización** usa:
 
@@ -83,12 +83,12 @@ Abre tres terminales en la raíz del mismo proyecto. Mantén cada comando en eje
 **Terminal 1: API**
 
 ```powershell
-java -jar api/target/api-1.0.0-SNAPSHOT.jar
+pwsh -NoProfile -File scripts/run-api.ps1
 ```
 
-Espera a que el registro indique que la aplicación inició. En este primer arranque, Flyway crea las tablas y carga **30 lotes ficticios: 20 pendientes y 10 liquidados**. En los arranques siguientes conserva los cambios, sin duplicar ni volver a cargar los lotes eliminados.
+Espera a que el registro indique que la aplicación inició. En este primer arranque, Flyway crea las tablas y carga **30 lotes ficticios: 20 pendientes y 10 liquidados**. En los arranques siguientes conserva los cambios, sin duplicar ni volver a cargar los lotes eliminados. El servidor queda en `http://localhost:5080`.
 
-Comprueba la conexión abriendo [la lista de lotes](http://localhost:5080/lotes) en el navegador. Verás datos JSON; la interfaz visual es Desktop. La ruta `/` no tiene una página web.
+La salud pública de la API se consulta en [http://localhost:5080/actuator/health](http://localhost:5080/actuator/health). Las rutas de datos requieren JWT y por eso no se abren directamente sin token.
 
 **Terminal 2: Desktop**
 
@@ -96,10 +96,14 @@ Comprueba la conexión abriendo [la lista de lotes](http://localhost:5080/lotes)
 .\mvnw.cmd -pl desktop javafx:run
 ```
 
+En la ventana de acceso, inicia con el usuario `admin` y la contraseña `CACAOSELVA_ADMIN_PASSWORD` que se generó en `.env.local`. Desktop recibe lotes paginados desde la API; puedes filtrar por estado o socio, navegar páginas y volver a consultar. Al modificar un lote usa la versión que leyó; si otra persona lo cambió, consulta de nuevo y vuelve a editar.
+
 **Terminal 3: Monitor**
 
+El script carga la configuración privada de `.env.local` para autenticar el Monitor sin mostrar contraseñas en el comando.
+
 ```powershell
-java -jar monitor/target/monitor-1.0.0-SNAPSHOT.jar
+pwsh -NoProfile -File scripts/run-monitor.ps1
 ```
 
 La API debe estar disponible para consultar o guardar datos. El Monitor es opcional para operar Desktop.

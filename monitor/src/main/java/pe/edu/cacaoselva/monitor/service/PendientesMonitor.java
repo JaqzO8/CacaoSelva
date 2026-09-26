@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pe.edu.cacaoselva.application.exception.ApiNoDisponibleException;
@@ -16,15 +17,24 @@ public final class PendientesMonitor implements AutoCloseable {
     private final ContarLotesPendientesUseCase contarPendientes;
     private final ScheduledExecutorService scheduler;
     private final Duration interval;
+    private final BooleanSupplier apiDisponible;
     private ScheduledFuture<?> task;
     private boolean closed;
     private int consecutiveFailures;
     private Long previousCount;
+    private Boolean lastHealth;
 
     public PendientesMonitor(ContarLotesPendientesUseCase contarPendientes,
                              ScheduledExecutorService scheduler, Duration interval) {
+        this(contarPendientes, scheduler, interval, () -> true);
+    }
+
+    public PendientesMonitor(ContarLotesPendientesUseCase contarPendientes,
+                             ScheduledExecutorService scheduler, Duration interval,
+                             BooleanSupplier apiDisponible) {
         this.contarPendientes = Objects.requireNonNull(contarPendientes);
         this.scheduler = Objects.requireNonNull(scheduler);
+        this.apiDisponible = Objects.requireNonNull(apiDisponible);
         if (interval == null || interval.toMillis() <= 0) {
             throw new IllegalArgumentException("El intervalo del monitor debe ser positivo (al menos 1 ms).");
         }
@@ -43,6 +53,12 @@ public final class PendientesMonitor implements AutoCloseable {
 
     private void consultar() {
         try {
+            boolean healthy = apiDisponible.getAsBoolean();
+            if (lastHealth == null || lastHealth != healthy) {
+                LOGGER.info("Estado de API: {}.", healthy ? "UP" : "DOWN");
+                lastHealth = healthy;
+            }
+            if (!healthy) throw new ApiNoDisponibleException("El health check de la API indica que no está disponible.");
             long count = contarPendientes.execute();
             if (consecutiveFailures > 0) {
                 LOGGER.info("Conexión recuperada tras {} fallos consecutivos.", consecutiveFailures);
