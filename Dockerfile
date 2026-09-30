@@ -1,5 +1,6 @@
 FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /src
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN chmod +x mvnw && ./mvnw -B -ntp -pl api -am package -DskipTests
 
