@@ -55,6 +55,9 @@ public final class JdbcUsuarioRepository implements UsuarioRepository, UsuarioWr
                 return new Usuario(keys.getInt(1), usuario, passwordHash, rol, true);
             }
         } catch (SQLException error) {
+            if ("23505".equals(error.getSQLState())) {
+                throw new pe.edu.cacaoselva.application.exception.RegistroDuplicadoException("Ya existe ese nombre de usuario.");
+            }
             throw new PersistenciaLoteException(error);
         }
     }

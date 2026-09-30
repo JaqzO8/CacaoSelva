@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([switch] $RunPostmanCollection, [int] $Port = 5081)
+param([switch] $RunPostmanCollection, [switch] $RunWebTests, [int] $Port = 5081)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $databaseUrl = $env:CACAOSELVA_TEST_DB_URL
@@ -79,6 +79,12 @@ try {
     }
     $lotes = Invoke-RestMethod "$baseUrl/lotes" -Headers $authHeaders
     if ($lotes.Count -ne 30) { throw 'Se esperaban los 30 lotes iniciales.' }
+    if ($RunWebTests) {
+        $env:CACAOSELVA_WEB_TEST_URL = $baseUrl
+        Push-Location (Join-Path $projectRoot 'web-tests')
+        try { & npm test; if ($LASTEXITCODE -ne 0) { throw 'Fallaron las pruebas web.' } }
+        finally { Pop-Location; Remove-Item Env:CACAOSELVA_WEB_TEST_URL -ErrorAction SilentlyContinue }
+    }
     if ($RunPostmanCollection) {
         $collection = Join-Path $projectRoot 'docs/postman/CacaoSelva.postman_collection.json'
         $report = Join-Path $logDirectory 'postman-results.json'

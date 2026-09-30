@@ -9,8 +9,7 @@ import pe.edu.cacaoselva.domain.model.DatosLote;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ComboBox;
 import pe.edu.cacaoselva.domain.model.EstadoLote;
-import pe.edu.cacaoselva.domain.model.DatosSocio;
-import pe.edu.cacaoselva.domain.model.Socio;
+import pe.edu.cacaoselva.application.dto.SocioResumenDto;
 import pe.edu.cacaoselva.application.dto.GuardarLoteCommand;
 import java.awt.image.BufferedImage;
 import java.net.InetSocketAddress;
@@ -70,6 +69,18 @@ class LotesWindowFxTest {
     @AfterAll
     static void detenerJavaFx() {
         Platform.exit();
+    }
+
+    @Test
+    void anteriorSeHabilitaAlCambiarDePagina() throws Exception {
+        onFx(() -> {
+            var window = new LotesWindow(); new Scene(window);
+            window.mostrarPaginaLotes(new pe.edu.cacaoselva.application.dto.PaginaLotes(List.of(), 1, 20, 30, 2));
+            assertFalse(((Button) window.lookup("#anterior")).isDisable());
+            window.mostrarPaginaLotes(new pe.edu.cacaoselva.application.dto.PaginaLotes(List.of(), 0, 20, 30, 2));
+            assertTrue(((Button) window.lookup("#anterior")).isDisable());
+            return null;
+        });
     }
 
     @Test
@@ -149,11 +160,11 @@ class LotesWindowFxTest {
             onFx(() -> {
                 view = new LotesWindow();
                 view.mostrarSocios(List.of(
-                        new Socio(1, new DatosSocio("11111111", "Ana", "Zona", "")),
-                        new Socio(2, new DatosSocio("22222222", "Luis", "Zona", "")),
-                        new Socio(3, new DatosSocio("33333333", "Rosa", "Zona", "")),
-                        new Socio(4, new DatosSocio("44444444", "Paco", "Zona", "")),
-                        new Socio(5, new DatosSocio("55555555", "Luz", "Zona", ""))));
+                        new SocioResumenDto(1, "Ana"),
+                        new SocioResumenDto(2, "Luis"),
+                        new SocioResumenDto(3, "Rosa"),
+                        new SocioResumenDto(4, "Paco"),
+                        new SocioResumenDto(5, "Luz")));
                 controller = new LotesController(adapter, view, worker, Platform::runLater,
                         new CrearLoteUseCase(adapter), new ActualizarLoteUseCase(adapter), new EliminarLoteUseCase(adapter));
                 view.setOnConsultar(controller::consultar);
@@ -203,7 +214,7 @@ class LotesWindowFxTest {
             esperarEstado("3 lotes recibidos.");
             onFx(() -> {
                 assertEquals(3, table().getItems().size());
-                ((ComboBox<Socio>) view.lookup("#socio")).setValue(new Socio(4, new DatosSocio("44444444", "Paco", "Zona", "")));
+                ((ComboBox<SocioResumenDto>) view.lookup("#socio")).setValue(new SocioResumenDto(4, "Paco"));
                 ((TextField) view.lookup("#peso")).setText("12.375");
                 ((Button) view.lookup("#guardar")).fire();
                 return null;
@@ -211,8 +222,8 @@ class LotesWindowFxTest {
             esperarEstado("4 lotes recibidos.");
             onFx(() -> {
                 table().getSelectionModel().select(3);
-                assertEquals(4, ((ComboBox<Socio>) view.lookup("#socio")).getValue().id());
-                ((ComboBox<Socio>) view.lookup("#socio")).setValue(new Socio(5, new DatosSocio("55555555", "Luz", "Zona", "")));
+                assertEquals(4, ((ComboBox<SocioResumenDto>) view.lookup("#socio")).getValue().id());
+                ((ComboBox<SocioResumenDto>) view.lookup("#socio")).setValue(new SocioResumenDto(5, "Luz"));
                 ((Button) view.lookup("#guardar")).fire();
                 return null;
             });

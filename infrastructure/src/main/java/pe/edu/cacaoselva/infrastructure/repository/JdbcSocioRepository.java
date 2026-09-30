@@ -93,6 +93,9 @@ public final class JdbcSocioRepository implements SocioRepository, SocioWritePor
                 return new Socio(keys.getInt(1), datos);
             }
         } catch (SQLException error) {
+            if ("23505".equals(error.getSQLState())) {
+                throw new pe.edu.cacaoselva.application.exception.RegistroDuplicadoException("Ya existe un socio con ese DNI.");
+            }
             throw new PersistenciaLoteException(error);
         }
     }

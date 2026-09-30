@@ -21,7 +21,7 @@ import pe.edu.cacaoselva.application.dto.GuardarLoteCommand;
 import pe.edu.cacaoselva.application.dto.PaginaLotes;
 import pe.edu.cacaoselva.domain.model.EstadoLote;
 import pe.edu.cacaoselva.domain.model.Lote;
-import pe.edu.cacaoselva.domain.model.Socio;
+import pe.edu.cacaoselva.application.dto.SocioResumenDto;
 
 public final class LotesWindow extends BorderPane implements LotesView {
     private static final int PAGE_SIZE = 20;
@@ -39,8 +39,8 @@ public final class LotesWindow extends BorderPane implements LotesView {
     private final Label saludApi = new Label("API: sin comprobar");
     private final TextField filtroSocio = new TextField();
     private final ComboBox<String> filtroEstado = new ComboBox<>();
-    private final ComboBox<Socio> socio = new ComboBox<>();
-    private final ObservableList<Socio> socios = FXCollections.observableArrayList();
+    private final ComboBox<SocioResumenDto> socio = new ComboBox<>();
+    private final ObservableList<SocioResumenDto> socios = FXCollections.observableArrayList();
     private final TextField peso = new TextField();
     private final ComboBox<EstadoLote> estadoLote = new ComboBox<>();
     private final Label tituloFormulario = new Label("Nuevo lote");
@@ -48,8 +48,8 @@ public final class LotesWindow extends BorderPane implements LotesView {
     private final ObservableList<Lote> registros = FXCollections.observableArrayList();
     private Integer selectedId;
     private Integer selectedVersion;
-    private int currentPage;
-    private int totalPages;
+    private final javafx.beans.property.IntegerProperty currentPage = new javafx.beans.property.SimpleIntegerProperty();
+    private final javafx.beans.property.IntegerProperty totalPages = new javafx.beans.property.SimpleIntegerProperty();
     private Consumer<FiltroLotes> buscarAction;
 
     public LotesWindow() {
@@ -73,12 +73,11 @@ public final class LotesWindow extends BorderPane implements LotesView {
     }
 
     private javafx.beans.binding.BooleanBinding paginaAnteriorInvalida() {
-        return javafx.beans.binding.Bindings.createBooleanBinding(() -> currentPage <= 0);
+        return currentPage.lessThanOrEqualTo(0);
     }
 
     private javafx.beans.binding.BooleanBinding paginaSiguienteInvalida() {
-        return javafx.beans.binding.Bindings.createBooleanBinding(() -> totalPages == 0 || currentPage + 1 >= totalPages,
-                pagina.textProperty());
+        return totalPages.isEqualTo(0).or(currentPage.add(1).greaterThanOrEqualTo(totalPages));
     }
 
     private void configurarIdentificadores() {
@@ -99,8 +98,8 @@ public final class LotesWindow extends BorderPane implements LotesView {
         filtroEstado.setValue("TODOS");
         filtroSocio.textProperty().addListener((o, a, b) -> solicitarFiltro());
         filtroEstado.valueProperty().addListener((o, a, b) -> solicitarFiltro());
-        anterior.setOnAction(event -> solicitarPagina(currentPage - 1));
-        siguiente.setOnAction(event -> solicitarPagina(currentPage + 1));
+        anterior.setOnAction(event -> solicitarPagina(currentPage.get() - 1));
+        siguiente.setOnAction(event -> solicitarPagina(currentPage.get() + 1));
         ProgressIndicator progress = new ProgressIndicator();
         progress.setMaxSize(24, 24);
         progress.visibleProperty().bind(ocupado); progress.managedProperty().bind(ocupado);
@@ -149,19 +148,26 @@ public final class LotesWindow extends BorderPane implements LotesView {
     }
 
     private String nombreSocio(Integer id) {
-        return socios.stream().filter(item -> item.id().equals(id)).map(Socio::nombre).findFirst().orElse("Socio " + id);
+        return socios.stream().filter(item -> item.id().equals(id)).map(SocioResumenDto::nombre).findFirst().orElse("Socio " + id);
     }
 
     private void solicitarFiltro() {
-        currentPage = 0;
+        currentPage.set(0);
         solicitarPagina(0);
     }
 
     private void solicitarPagina(int page) {
         if (page < 0 || buscarAction == null) return;
-        currentPage = page;
+        currentPage.set(page);
         String value = filtroSocio.getText() == null ? "" : filtroSocio.getText().strip();
-        Integer socioId = value.matches("\\d+") ? Integer.valueOf(value) : null;
+        Integer socioId;
+        try {
+            socioId = value.matches("\\d+") ? Integer.valueOf(value) : null;
+            if (socioId != null && socioId <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException error) {
+            estado.setText("El ID del socio debe ser un entero positivo válido.");
+            return;
+        }
         EstadoLote state = filtroEstado.getValue() == null || "TODOS".equals(filtroEstado.getValue())
                 ? null : EstadoLote.valueOf(filtroEstado.getValue());
         buscarAction.accept(new FiltroLotes(state, socioId, socioId == null ? value : null, page, PAGE_SIZE));
@@ -173,7 +179,7 @@ public final class LotesWindow extends BorderPane implements LotesView {
     public void setOnGuardar(BiConsumer<Integer, GuardarLoteCommand> action) {
         guardar.setOnAction(event -> {
             try {
-                Socio selected = socio.getValue();
+                SocioResumenDto selected = socio.getValue();
                 if (selected == null) { estado.setText("Selecciona un socio de la lista."); return; }
                 BigDecimal pesoKg = new BigDecimal(peso.getText().strip().replace(',', '.'));
                 action.accept(selectedId, new GuardarLoteCommand(selected.id(), pesoKg, estadoLote.getValue(), selectedVersion));
@@ -204,8 +210,8 @@ public final class LotesWindow extends BorderPane implements LotesView {
     }
 
     @Override public void mostrarPaginaLotes(PaginaLotes page) {
-        currentPage = page.page(); totalPages = page.totalPages();
-        pagina.setText("Página " + (totalPages == 0 ? 0 : currentPage + 1) + " de " + totalPages);
+        currentPage.set(page.page()); totalPages.set(page.totalPages());
+        pagina.setText("Página " + (totalPages.get() == 0 ? 0 : currentPage.get() + 1) + " de " + totalPages.get());
         registros.setAll(page.content().stream().map(item -> item.toDomain()).toList());
         visibles.setText(page.totalElements() + " lotes en total");
         completarConsulta(page.content().size() + " lotes recibidos.");
@@ -213,7 +219,7 @@ public final class LotesWindow extends BorderPane implements LotesView {
 
     @Override public void mostrarLotes(List<Lote> lotes) {
         registros.setAll(lotes); visibles.setText(lotes.size() + " lotes");
-        totalPages = lotes.isEmpty() ? 0 : 1; currentPage = 0; pagina.setText("Página " + totalPages + " de " + totalPages);
+        totalPages.set(lotes.isEmpty() ? 0 : 1); currentPage.set(0); pagina.setText("Página " + totalPages.get() + " de " + totalPages.get());
         completarConsulta(lotes.size() + " lotes recibidos.");
     }
 
@@ -223,12 +229,12 @@ public final class LotesWindow extends BorderPane implements LotesView {
         ultimaConsulta.setText("Actualizado: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
     }
 
-    @Override public void mostrarSocios(List<Socio> items) { socios.setAll(items); tabla.refresh(); }
+    @Override public void mostrarSocios(List<SocioResumenDto> items) { socios.setAll(items); tabla.refresh(); }
     @Override public void mostrarSaludApi(boolean disponible) { saludApi.setText(disponible ? "API: disponible" : "API: sin conexión"); }
     @Override public void mostrarError() { mostrarError("No se pudo conectar con la API."); }
 
     @Override public void mostrarError(String message) {
-        registros.clear(); totalPages = 0; pagina.setText("Página 0 de 0"); visibles.setText("0 lotes en total");
+        registros.clear(); currentPage.set(0); totalPages.set(0); pagina.setText("Página 0 de 0"); visibles.setText("0 lotes en total");
         tabla.setPlaceholder(new Label("Sin datos actuales. Vuelve a consultar.")); ocupado.set(false);
         estado.setText(message); ultimaConsulta.setText("Sin datos actualizados");
     }

@@ -36,6 +36,13 @@ public class SocioController {
         return LoteResponseMapper.toSocioResponse(buscarPorDni.execute(dni));
     }
 
+    @GetMapping("/catalogo")
+    public List<pe.edu.cacaoselva.application.dto.SocioResumenDto> catalogo() {
+        return listarSocios.execute().stream()
+                .map(socio -> new pe.edu.cacaoselva.application.dto.SocioResumenDto(socio.id(), socio.nombre()))
+                .toList();
+    }
+
     @PostMapping
     public ResponseEntity<SocioResponse> crear(@RequestBody GuardarSocioRequest request) {
         SocioResponse response = LoteResponseMapper.toSocioResponse(crearSocio.execute(request.toCommand()));

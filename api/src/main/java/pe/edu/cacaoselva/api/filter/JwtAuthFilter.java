@@ -17,7 +17,8 @@ import pe.edu.cacaoselva.domain.model.Rol;
 /** Filtro HTTP que intercepta y valida el JWT en la cabecera Authorization (Fase 3). */
 public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final Set<String> PUBLIC_PATHS = Set.of("/auth/login", "/actuator/health", "/actuator/info");
+    private static final Set<String> PUBLIC_PATHS = Set.of("/", "/index.html", "/assets/app.js",
+            "/assets/app.css", "/favicon.svg", "/auth/login", "/auth/register", "/actuator/health", "/actuator/info");
 
     private final TokenPort tokenPort;
     private final ObjectMapper mapper;
@@ -32,6 +33,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader("X-Frame-Options", "DENY");
+        response.setHeader("Referrer-Policy", "same-origin");
+        response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+        response.setHeader("Cache-Control", "no-store");
         if (!enabled || isPublicPath(request)) {
             filterChain.doFilter(request, response);
             return;
@@ -69,6 +75,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private boolean tienePermiso(String method, String path, Rol rol) {
         if (rol == Rol.ADMIN) return true;
+        if (method.equals("GET") && path.equals("/socios/catalogo")) return true;
         if (path.startsWith("/socios") || path.startsWith("/auth/usuarios")) return false;
         if (rol == Rol.CONSULTOR) return method.equals("GET")
                 && (path.equals("/lotes") || path.matches("/lotes/\\d+")

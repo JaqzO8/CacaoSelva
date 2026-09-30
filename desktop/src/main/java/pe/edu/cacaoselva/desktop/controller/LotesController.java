@@ -34,6 +34,7 @@ public final class LotesController {
     private boolean consultando;
     private boolean cerrado;
     private FiltroLotes filtro = new FiltroLotes(null, null, null, 0, 20);
+    private FiltroLotes filtroPendiente;
 
     public LotesController(LoteQueryPort queryPort, LotesView view,
                            Executor worker, Consumer<Runnable> uiDispatcher,
@@ -52,8 +53,13 @@ public final class LotesController {
     }
 
     public void consultar(FiltroLotes nuevoFiltro) {
+        if (cerrado) return;
+        if (consultando) {
+            filtroPendiente = nuevoFiltro;
+            return;
+        }
         filtro = nuevoFiltro;
-        ejecutar(() -> queryPort.findAll(filtro), null);
+        ejecutar(() -> queryPort.findAll(nuevoFiltro), null);
     }
 
     public void guardar(Integer id, GuardarLoteCommand command) {
@@ -100,6 +106,12 @@ public final class LotesController {
                         return;
                     }
                     consultando = false;
+                    FiltroLotes siguiente = filtroPendiente;
+                    filtroPendiente = null;
+                    if (siguiente != null && !(error != null && operation != null)) {
+                        consultar(siguiente);
+                        return;
+                    }
                     if (error == null) {
                         view.mostrarPaginaLotes(lotes);
                     } else {
@@ -128,6 +140,7 @@ public final class LotesController {
 
     public void cerrar() {
         cerrado = true;
+        filtroPendiente = null;
         if (pending != null) {
             pending.cancel(true);
         }

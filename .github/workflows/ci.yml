@@ -29,8 +29,15 @@ jobs:
           sudo apt-get install -y postgresql-17 libgtk-3-0 xvfb
           echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
           npm install --global newman@6.2.1
+      - name: Preparar pruebas web
+        working-directory: web-tests
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
       - name: Pruebas unitarias, integración, UI y procesos reales
-        run: xvfb-run -a pwsh -NoProfile -File scripts/verify.ps1 -Gui -Postman
+        run: xvfb-run -a pwsh -NoProfile -File scripts/verify.ps1 -Gui -Postman -Web
+      - name: Comprobar imagen de publicación
+        run: docker build --tag cacaoselva:${{ github.sha }} .
       - name: Reportes
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,4 +48,40 @@ jobs:
             **/target/failsafe-reports/
             desktop/target/javafx-smoke.png
             .tools/validation/
+            web-tests/playwright-report/
+            web-tests/test-results/
           include-hidden-files: true
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/deploy' && github.event_name != 'pull_request' && vars.RENDER_SERVICE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: cacaoselva-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ vars.RENDER_SERVICE_URL }}
+    steps:
+      - name: Publicar el commit que superó las pruebas
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$DEPLOY_HOOK" || { echo 'Falta el secreto RENDER_DEPLOY_HOOK_URL'; exit 1; }
+          curl --fail --silent --show-error --max-time 60 --request POST "${DEPLOY_HOOK}&ref=${GITHUB_SHA}" --output /tmp/deploy-response.json
+          echo 'Render aceptó el despliegue del commit verificado.'
+      - name: Verificar salud y versión publicada
+        env:
+          SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
+        run: |
+          for attempt in $(seq 1 100); do
+            INFO=$(curl --silent --max-time 15 "$SERVICE_URL/actuator/info" || true)
+            COMMIT=$(printf '%s' "$INFO" | jq -r '.app.commit // empty' 2>/dev/null || true)
+            if [ "$COMMIT" = "$GITHUB_SHA" ]; then
+              HEALTH=$(curl --silent --fail --max-time 15 "$SERVICE_URL/actuator/health" | jq -r '.status' || true)
+              if [ "$HEALTH" = 'UP' ]; then echo "Publicación correcta: $GITHUB_SHA"; exit 0; fi
+            fi
+            sleep 10
+          done
+          echo 'No se pudo verificar la versión y salud publicadas.'
+          exit 1

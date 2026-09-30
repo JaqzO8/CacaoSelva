@@ -1,0 +1,58 @@
+const { test, expect } = require('@playwright/test');
+
+test('registro, CRUD compartido, filtros, sesión y diseño adaptable', async ({ page, request }, testInfo) => {
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const name = `web_${testInfo.project.name.replaceAll('-', '_')}_${Date.now()}`;
+  const password = 'Prueba-Web-123456';
+  let createdId;
+  const login = await request.post('/auth/login', { data: { usuario: 'admin', contrasena: process.env.CACAOSELVA_ADMIN_PASSWORD } });
+  expect(login.ok()).toBeTruthy();
+  const admin = { Authorization: `Bearer ${(await login.json()).token}` };
+  const noOverflow = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.goto('/'); await expect(page.locator('#welcome')).toBeVisible(); await noOverflow();
+  await page.locator('#open-register').click();
+  await noOverflow();
+  await page.locator('#username').fill(name); await page.locator('#password').fill(password);
+  await page.locator('#auth-submit').click();
+  await expect(page.locator('#auth-dialog')).not.toBeVisible();
+  await expect(page.locator('#total')).toHaveText('30');
+  await expect(page.locator('#new-lote')).toBeVisible(); await expect(page.locator('#new-socio')).not.toBeVisible();
+  await noOverflow();
+  await page.locator('#next').click(); await expect(page.locator('#page-info')).toHaveText('Página 2 de 2');
+  await page.locator('#previous').click(); await expect(page.locator('#page-info')).toHaveText('Página 1 de 2');
+  await page.locator('#status').selectOption('LIQUIDADO'); await expect(page.locator('#total')).toHaveText('10');
+  await page.locator('#status').selectOption(''); await expect(page.locator('#total')).toHaveText('30');
+  await page.locator('#search').fill('2147483648'); await expect(page.locator('#message')).toContainText('ID de socio');
+  await page.locator('#search').fill('1'); await expect(page.locator('#total')).not.toHaveText('30');
+  await page.locator('#search').fill(''); await expect(page.locator('#total')).toHaveText('30');
+  await page.locator('#new-lote').click(); await page.locator('#lote-socio').selectOption('1');
+  await noOverflow();
+  await page.locator('#lote-weight').fill('12.375'); await page.locator('#lote-form button[type=submit]').click();
+  await expect(page.locator('#lote-dialog')).not.toBeVisible(); await expect(page.locator('#total')).toHaveText('31');
+  try {
+    const listing = await request.get('/lotes', { headers: admin });
+    const matches = (await listing.json()).filter(lote => lote.pesoKg === 12.375);
+    createdId = Math.max(...matches.map(lote => lote.id)); expect(Number.isFinite(createdId)).toBeTruthy();
+    await page.locator('#next').click();
+    const row = page.locator('#lotes tr').filter({ hasText: `#${String(createdId).padStart(4, '0')}` });
+    await expect(row).toBeVisible(); await row.getByRole('button', { name: 'Editar', exact: true }).click();
+    await page.locator('#lote-weight').fill('20.125'); await page.locator('#lote-status').selectOption('LIQUIDADO');
+    await page.locator('#lote-form button[type=submit]').click(); await expect(page.locator('#lote-dialog')).not.toBeVisible();
+    await expect(row).toContainText('20.125');
+    await page.reload(); await expect(page.locator('#workspace')).toBeVisible();
+    const shared = await request.get(`/lotes/${createdId}`, { headers: admin }); expect((await shared.json()).pesoKg).toBe(20.125);
+    await noOverflow();
+    await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}.png`), fullPage: true });
+    await page.locator('#logout').click(); await expect(page.locator('#welcome')).toBeVisible();
+    await page.locator('#open-login').click(); await page.locator('#username').fill('admin');
+    await page.locator('#password').fill(process.env.CACAOSELVA_ADMIN_PASSWORD); await page.locator('#auth-submit').click();
+    await expect(page.locator('#new-socio')).toBeVisible();
+    await page.locator('#next').click();
+    const adminRow = page.locator('#lotes tr').filter({ hasText: `#${String(createdId).padStart(4, '0')}` });
+    await adminRow.getByRole('button', { name: 'Eliminar', exact: true }).click();
+    await page.locator('#delete-confirm').click(); await expect(page.locator('#delete-dialog')).not.toBeVisible();
+    await expect(page.locator('#total')).toHaveText('30');
+    createdId = undefined;
+    expect(errors).toEqual([]);
+  } finally { if (createdId) await request.delete(`/lotes/${createdId}`, { headers: admin }); }
+});

@@ -56,7 +56,7 @@ public final class CacaoSelvaDesktopApplication extends Application {
         stage.show();
         worker.execute(() -> {
             try {
-                var socios = adapter.listarSocios();
+                var socios = adapter.listarCatalogoSocios();
                 Platform.runLater(() -> view.mostrarSocios(socios));
             } catch (RuntimeException error) {
                 Platform.runLater(() -> view.mostrarError("No se pudieron cargar los socios: " + error.getMessage()));

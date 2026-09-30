@@ -16,16 +16,27 @@ import pe.edu.cacaoselva.application.dto.UsuarioDto;
 public class AuthController {
     private final AutenticarUsuarioUseCase autenticar;
     private final RegistrarUsuarioUseCase registrar;
+    private final boolean registroPublico;
 
-    public AuthController(AutenticarUsuarioUseCase autenticar, RegistrarUsuarioUseCase registrar) {
+    public AuthController(AutenticarUsuarioUseCase autenticar, RegistrarUsuarioUseCase registrar,
+            @org.springframework.beans.factory.annotation.Value("${cacaoselva.registration.enabled:true}") boolean registroPublico) {
         this.autenticar = autenticar;
         this.registrar = registrar;
+        this.registroPublico = registroPublico;
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         String token = autenticar.execute(new Credenciales(request.usuario(), request.contrasena()));
         return ResponseEntity.ok(new LoginResponse(token));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<UsuarioDto> registrarse(@RequestBody LoginRequest request) {
+        if (!registroPublico) return ResponseEntity.status(403).build();
+        // El cliente nunca elige su rol al registrarse públicamente.
+        return ResponseEntity.status(201).body(registrar.execute(request.usuario(), request.contrasena(),
+                pe.edu.cacaoselva.domain.model.Rol.OPERADOR));
     }
 
     @PostMapping("/usuarios")

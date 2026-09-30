@@ -3,7 +3,7 @@ package pe.edu.cacaoselva.desktop.view;
 import java.util.List;
 import pe.edu.cacaoselva.application.dto.PaginaLotes;
 import pe.edu.cacaoselva.domain.model.Lote;
-import pe.edu.cacaoselva.domain.model.Socio;
+import pe.edu.cacaoselva.application.dto.SocioResumenDto;
 
 public interface LotesView {
     void mostrarConsultando();
@@ -14,6 +14,6 @@ public interface LotesView {
     default void mostrarPaginaLotes(PaginaLotes page) {
         mostrarLotes(page.content().stream().map(lote -> lote.toDomain()).toList());
     }
-    default void mostrarSocios(List<Socio> socios) { }
+    default void mostrarSocios(List<SocioResumenDto> socios) { }
     default void mostrarSaludApi(boolean disponible) { }
 }

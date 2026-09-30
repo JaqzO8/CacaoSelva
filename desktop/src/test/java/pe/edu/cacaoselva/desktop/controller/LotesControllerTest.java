@@ -42,6 +42,22 @@ class LotesControllerTest {
     }
 
     @Test
+    void conservaElUltimoFiltroMientrasUnaConsultaEstaEnCurso() {
+        var first = new FiltroLotes(null, 1, null, 0, 20);
+        var last = new FiltroLotes(null, 3, null, 0, 20);
+        when(queryPort.findAll(any(FiltroLotes.class))).thenReturn(page(List.of()));
+        controller.consultar(first);
+        controller.consultar(new FiltroLotes(null, 2, null, 0, 20));
+        controller.consultar(last);
+        background.remove().run(); ui.remove().run();
+        verify(view, never()).mostrarPaginaLotes(any());
+        background.remove().run(); ui.remove().run();
+        verify(queryPort).findAll(first); verify(queryPort).findAll(last);
+        verify(queryPort, times(2)).findAll(any(FiltroLotes.class));
+        verify(view).mostrarPaginaLotes(page(List.of()));
+    }
+
+    @Test
     void ejecutaLaConsultaFueraDeLaUiYPublicaElResultadoEnElla() {
         List<Lote> lotes = List.of(new Lote(1, 1, new BigDecimal("120.5"), EstadoLote.PENDIENTE));
         when(queryPort.findAll(any(FiltroLotes.class))).thenReturn(page(lotes));

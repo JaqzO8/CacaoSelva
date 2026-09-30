@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#163e32">
+  <meta name="description" content="Registro compartido de lotes de cacao. Consulta, registra y sigue cada entrega en CacaoSelva.">
+  <title>CacaoSelva · Registro de lotes</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="CacaoSelva, inicio"><img src="/favicon.svg" alt="" width="40" height="40"><span>Cacao<span class="brand-light">Selva</span><small>DEL ORIGEN AL REGISTRO</small></span></a>
+    <div class="header-right"><span class="connection" id="connection">Registro compartido</span><span id="session-name" hidden></span><button class="button outline small" id="logout" hidden>Cerrar sesión</button><button class="button outline small" id="open-login">Ingresar</button></div>
+  </header>
+  <main>
+    <section class="welcome" id="welcome">
+      <div class="welcome-copy"><span class="eyebrow">CACAO · COMUNIDAD · TRAZABILIDAD</span><h1>Cada entrega<br>tiene una historia.</h1><p>Registra los lotes, acompaña su liquidación y comparte información actualizada con toda la comunidad.</p><div class="hero-actions"><button class="button primary" id="open-register">Crear mi cuenta <span aria-hidden="true">↗</span></button><button class="button text" id="welcome-login">Ya tengo una cuenta</button></div><div class="welcome-note"><span aria-hidden="true">●</span> Tus registros disponibles desde cualquier dispositivo.</div></div>
+      <div class="welcome-art" aria-hidden="true"><div class="art-ring ring-one"></div><div class="art-ring ring-two"></div><div class="pod"><div></div><div></div><div></div></div><span class="art-caption">CUIDAMOS EL ORIGEN.<br>REGISTRAMOS EL FUTURO.</span><span class="art-number">01 / SELVA</span></div>
+    </section>
+    <section id="workspace" hidden aria-label="Gestión de lotes">
+      <div class="page-heading"><div><span class="eyebrow">TU COMUNIDAD, AL DÍA</span><h1>Registro de lotes</h1><p>La información de cada entrega, en un mismo lugar.</p></div><div class="page-actions"><button class="button outline" id="new-socio" hidden>Registrar socio</button><button class="button primary" id="new-lote" hidden><span aria-hidden="true">+</span> Nuevo lote</button></div></div>
+      <div class="stats"><article><span>Lotes encontrados</span><strong id="total">—</strong><small>Según los filtros actuales</small></article><article><span>Pendientes de liquidar</span><strong id="pending">—</strong><small>En todo el registro</small></article><article><span>Peso en esta página</span><strong><span id="weight">—</span> <em>kg</em></strong><small>Sumatoria de las entregas visibles</small></article></div>
+      <section class="registry" aria-labelledby="registry-title"><div class="registry-header"><div><h2 id="registry-title">Entregas registradas</h2><p id="last-update">Consulta la información más reciente.</p></div><button class="button outline small" id="refresh">↻ Actualizar</button></div>
+        <form class="filters" id="filters"><label class="search">Buscar socio<input id="search" type="search" maxlength="120" placeholder="Nombre o ID del socio" autocomplete="off"></label><label>Estado<select id="status"><option value="">Todos los estados</option><option value="PENDIENTE">Pendiente</option><option value="LIQUIDADO">Liquidado</option></select></label><label>Por página<select id="page-size"><option>10</option><option selected>20</option><option>50</option></select></label><button class="button outline" type="submit">Buscar</button></form>
+        <div class="table-scroll"><table><thead><tr><th scope="col">Lote</th><th scope="col">Socio</th><th scope="col" class="numeric">Peso (kg)</th><th scope="col">Estado</th><th scope="col" class="actions-col">Acciones</th></tr></thead><tbody id="lotes"></tbody></table></div>
+        <p class="empty" id="empty" hidden>No hay lotes que coincidan con esta búsqueda.</p><p class="loading" id="loading" hidden>Consultando registros…</p>
+        <div class="pagination"><span id="page-info">Página 0 de 0</span><div><button class="button outline small" id="previous" disabled>← Anterior</button><button class="button outline small" id="next" disabled>Siguiente →</button></div></div>
+      </section>
+      <p class="workspace-note">Los cambios se guardan en el registro compartido. Actualiza para ver las últimas entregas.</p>
+    </section>
+    <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+  </main>
+  <footer><span>CacaoSelva</span><span>Hecho para quienes cuidan el cacao.</span><a href="https://github.com/JaqzO8/CacaoSelva/tree/deploy" target="_blank" rel="noopener noreferrer">Proyecto y documentación ↗</a></footer>
+
+  <dialog id="auth-dialog" aria-labelledby="auth-title"><button class="dialog-close" type="button" data-close="auth-dialog" aria-label="Cerrar">×</button><span class="eyebrow">BIENVENIDO A CACAOSELVA</span><h2 id="auth-title">Inicia sesión</h2><p id="auth-description">Accede al registro compartido de tu comunidad.</p><form id="auth-form"><fieldset><label>Usuario<input id="username" name="username" autocomplete="username" required minlength="3" maxlength="50" pattern="[A-Za-z0-9._\-]+" placeholder="Tu nombre de usuario"></label><label>Contraseña<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="72"></label><p class="field-hint" id="password-hint" hidden>Mínimo 12 caracteres. Elige una contraseña que no utilices en otros sitios.</p><p class="form-error" id="auth-error" role="alert" hidden></p><button class="button primary full" id="auth-submit" type="submit">Ingresar</button><button class="button text full" id="auth-switch" type="button">¿Primera vez? Crea una cuenta</button></fieldset></form><p class="field-hint" id="registration-note" hidden>Tu cuenta permite crear y modificar lotes compartidos. No publiques información sensible en los registros.</p></dialog>
+
+  <dialog id="lote-dialog" aria-labelledby="lote-title"><button class="dialog-close" type="button" data-close="lote-dialog" aria-label="Cerrar">×</button><span class="eyebrow">UNA NUEVA ENTREGA</span><h2 id="lote-title">Nuevo lote</h2><form id="lote-form"><fieldset><label>Socio<select id="lote-socio" required><option value="">Selecciona un socio</option></select></label><label>Peso (kg)<input id="lote-weight" type="number" min="0.001" max="999999999.999" step="0.001" required placeholder="125.375"></label><label>Estado<select id="lote-status"><option value="PENDIENTE">Pendiente</option><option value="LIQUIDADO">Liquidado</option></select></label><p class="form-error" id="lote-error" role="alert" hidden></p><button class="button primary full" type="submit">Guardar lote</button><button class="button text full" type="button" data-close="lote-dialog">Cancelar</button></fieldset></form></dialog>
+
+  <dialog id="socio-dialog" aria-labelledby="socio-title"><button class="dialog-close" type="button" data-close="socio-dialog" aria-label="Cerrar">×</button><span class="eyebrow">NUEVO MIEMBRO</span><h2 id="socio-title">Registrar socio</h2><form id="socio-form"><fieldset><label>DNI<input name="dni" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" required></label><label>Nombre<input name="nombre" maxlength="120" required></label><label>Zona <small>(opcional)</small><input name="zona" maxlength="60"></label><label>Teléfono <small>(opcional)</small><input name="telefono" type="tel" maxlength="15"></label><p class="form-error" id="socio-error" role="alert" hidden></p><button class="button primary full" type="submit">Guardar socio</button></fieldset></form></dialog>
+
+  <dialog id="delete-dialog" aria-labelledby="delete-title"><h2 id="delete-title">Eliminar lote</h2><p id="delete-description"></p><p>Esta acción es definitiva. El historial de auditoría se conserva.</p><p class="form-error" id="delete-error" role="alert" hidden></p><div class="dialog-actions"><button class="button outline" data-close="delete-dialog">Cancelar</button><button class="button danger" id="delete-confirm">Eliminar lote</button></div></dialog>
+  <noscript>Activa JavaScript para consultar y gestionar los lotes.</noscript>
+</body>
+</html>

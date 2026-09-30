@@ -84,6 +84,14 @@ public class ApplicationConfig {
     }
 
     @Bean
+    public FilterRegistrationBean<pe.edu.cacaoselva.api.filter.AuthRateLimitFilter> authRateLimit(ObjectMapper mapper) {
+        var registration = new FilterRegistrationBean<>(new pe.edu.cacaoselva.api.filter.AuthRateLimitFilter(mapper));
+        registration.addUrlPatterns("/auth/*");
+        registration.setOrder(2);
+        return registration;
+    }
+
+    @Bean
     public ApplicationRunner bootstrapAdmin(JdbcTemplate jdbc, BCryptPasswordAdapter passwords,
             @Value("${cacaoselva.admin.password:}") String adminPassword) {
         return args -> {

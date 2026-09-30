@@ -191,6 +191,16 @@ public final class HttpLoteQueryAdapter implements LoteQueryPort, LoteWritePort,
         }
     }
 
+    public List<pe.edu.cacaoselva.application.dto.SocioResumenDto> listarCatalogoSocios() {
+        var response = send(request(config.sociosUri() + "/catalogo").GET().build());
+        requireStatus(response, HTTP_OK);
+        try {
+            return mapper.readValue(response.body(), new TypeReference<>() { });
+        } catch (JsonProcessingException error) {
+            throw new ApiNoDisponibleException("La API devolvió un catálogo inválido.", error);
+        }
+    }
+
     public Optional<Socio> buscarSocioPorDni(String dni) {
         var uri = config.sociosUri() + "/buscar?dni=" + java.net.URLEncoder.encode(dni, StandardCharsets.UTF_8);
         var response = send(request(uri).GET().build());

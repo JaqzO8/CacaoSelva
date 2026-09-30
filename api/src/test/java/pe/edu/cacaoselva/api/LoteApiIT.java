@@ -42,6 +42,7 @@ class LoteApiIT {
 
     @BeforeEach
     void autenticar() {
+        if (!http.getRestTemplate().getInterceptors().isEmpty()) return;
         var login = http.postForObject("/auth/login", java.util.Map.of("usuario", "admin", "contrasena", adminPassword),
                 pe.edu.cacaoselva.api.dto.LoginResponse.class);
         assertNotNull(login);
@@ -49,6 +50,59 @@ class LoteApiIT {
             request.getHeaders().setBearerAuth(login.token());
             return execution.execute(request, body);
         });
+    }
+
+    @Test
+    void registroPublicoCreaOperadorSinExponerDatosPrivados() {
+        var client = new TestRestTemplate();
+        String base = "http://localhost:" + port;
+        var body = java.util.Map.of("usuario", "public_" + java.util.UUID.randomUUID().toString().substring(0, 8),
+                "contrasena", "Publica-123456");
+        var registered = client.postForEntity(base + "/auth/register", body,
+                pe.edu.cacaoselva.application.dto.UsuarioDto.class);
+        assertEquals(HttpStatus.CREATED, registered.getStatusCode());
+        assertEquals(Rol.OPERADOR, registered.getBody().rol());
+        assertEquals(HttpStatus.CONFLICT, client.postForEntity(base + "/auth/register", body, String.class).getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, client.postForEntity(base + "/auth/register",
+                java.util.Map.of("usuario", "escalamiento", "contrasena", "Publica-123456", "rol", "ADMIN"), String.class).getStatusCode());
+        var login = client.postForObject(base + "/auth/login", body, pe.edu.cacaoselva.api.dto.LoginResponse.class);
+        HttpHeaders headers = new HttpHeaders(); headers.setBearerAuth(login.token());
+        var catalog = client.exchange(base + "/socios/catalogo", HttpMethod.GET, new HttpEntity<>(headers), String.class);
+        assertEquals(HttpStatus.OK, catalog.getStatusCode());
+        assertTrue(catalog.getBody().contains("nombre"));
+        assertFalse(catalog.getBody().contains("dni"));
+        assertFalse(catalog.getBody().contains("telefono"));
+        assertEquals(HttpStatus.FORBIDDEN, client.exchange(base + "/socios", HttpMethod.GET,
+                new HttpEntity<>(headers), String.class).getStatusCode());
+        var created = client.postForEntity(base + "/lotes", new HttpEntity<>(
+                new GuardarLoteRequest(1, new BigDecimal("10.125"), EstadoLote.PENDIENTE, null), headers), LoteResponse.class);
+        assertEquals(HttpStatus.CREATED, created.getStatusCode());
+        String path = "/lotes/" + created.getBody().id();
+        try {
+            var update = new GuardarLoteRequest(2, new BigDecimal("12.375"), EstadoLote.LIQUIDADO, created.getBody().version());
+            assertEquals(HttpStatus.OK, client.exchange(base + path, HttpMethod.PUT,
+                    new HttpEntity<>(update, headers), LoteResponse.class).getStatusCode());
+            assertEquals(HttpStatus.CONFLICT, client.exchange(base + path, HttpMethod.PUT,
+                    new HttpEntity<>(update, headers), String.class).getStatusCode());
+            assertEquals(HttpStatus.FORBIDDEN, client.exchange(base + path, HttpMethod.DELETE,
+                    new HttpEntity<>(headers), String.class).getStatusCode());
+        } finally { http.exchange(path, HttpMethod.DELETE, HttpEntity.EMPTY, Void.class); }
+    }
+
+    @Test
+    void sitioEsPublicoYErroresDeNegocioNoSonFallosDelServidor() {
+        var client = new TestRestTemplate(); String base = "http://localhost:" + port;
+        for (String path : java.util.List.of("/", "/assets/app.js", "/assets/app.css", "/favicon.svg")) {
+            var result = client.getForEntity(base + path, String.class);
+            assertEquals(HttpStatus.OK, result.getStatusCode());
+            assertEquals("nosniff", result.getHeaders().getFirst("X-Content-Type-Options"));
+            assertNotNull(result.getHeaders().getFirst("Content-Security-Policy"));
+        }
+        assertEquals(HttpStatus.NOT_FOUND, http.postForEntity("/lotes",
+                new GuardarLoteRequest(2147483647, BigDecimal.ONE, EstadoLote.PENDIENTE, null), String.class).getStatusCode());
+        var socios = http.getForObject("/socios", pe.edu.cacaoselva.application.dto.SocioDto[].class);
+        var duplicate = java.util.Map.of("dni", socios[0].dni(), "nombre", "Duplicado", "zona", "", "telefono", "");
+        assertEquals(HttpStatus.CONFLICT, http.postForEntity("/socios", duplicate, String.class).getStatusCode());
     }
 
     @DynamicPropertySource

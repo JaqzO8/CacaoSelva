@@ -135,6 +135,9 @@ public final class JdbcLoteRepository implements LoteRepository, LoteWritePort {
                 return new Lote(keys.getInt(1), datos.socioId(), datos.pesoKg(), datos.estado(), 1);
             }
         } catch (SQLException error) {
+            if ("23503".equals(error.getSQLState())) {
+                throw new pe.edu.cacaoselva.application.exception.SocioNoEncontradoException(datos.socioId());
+            }
             throw new PersistenciaLoteException(error);
         }
     }
@@ -165,6 +168,9 @@ public final class JdbcLoteRepository implements LoteRepository, LoteWritePort {
         } catch (ConflictoEdicionException e) {
             throw e;
         } catch (SQLException error) {
+            if ("23503".equals(error.getSQLState())) {
+                throw new pe.edu.cacaoselva.application.exception.SocioNoEncontradoException(datos.socioId());
+            }
             throw new PersistenciaLoteException(error);
         }
     }

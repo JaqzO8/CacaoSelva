@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([switch] $Gui, [switch] $Postman)
+param([switch] $Gui, [switch] $Postman, [switch] $Web)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $projectRoot
@@ -33,7 +33,7 @@ try {
     if ($Gui) { $arguments += '-Dcacaoselva.test.javafx=true' }
     if ($IsWindows) { & '.\mvnw.cmd' @arguments } else { & sh './mvnw' @arguments }
     if ($LASTEXITCODE -ne 0) { throw 'Falló la compilación o las pruebas Maven.' }
-    & (Join-Path $PSScriptRoot 'smoke-test.ps1') -RunPostmanCollection:$Postman
+    & (Join-Path $PSScriptRoot 'smoke-test.ps1') -RunPostmanCollection:$Postman -RunWebTests:$Web
     Write-Output 'VALIDACIÓN COMPLETA: unitarias, PostgreSQL, CRUD, persistencia y recuperación correctos.'
 } finally {
     if ($created -and $testName -match '^cacaoselva_test_[a-f0-9]{32}$') {

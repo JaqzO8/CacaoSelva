@@ -2,7 +2,9 @@
 
 [![Pruebas CacaoSelva](https://github.com/JaqzO8/CacaoSelva/actions/workflows/ci.yml/badge.svg)](https://github.com/JaqzO8/CacaoSelva/actions/workflows/ci.yml)
 
-Aplicación académica Java 21 con **API REST, Desktop JavaFX y Monitor**, organizada en seis módulos Maven con Arquitectura Limpia. Los lotes se almacenan en **PostgreSQL** y permanecen disponibles al reiniciar las aplicaciones.
+Aplicación académica Java 21 con **web adaptable a móviles, API REST, Desktop JavaFX y Monitor**, organizada en seis módulos Maven con Arquitectura Limpia. Los lotes se almacenan en **PostgreSQL** y permanecen disponibles al reiniciar las aplicaciones.
+
+La rama `deploy` integra `MAURICIO` y añade registro público como operador, interfaz web, correcciones y publicación mediante GitHub Actions. Consulta la [guía de publicación y persistencia](docs/DESPLIEGUE.md) y el [manual web](docs/MANUAL_WEB.md).
 
 **Primera instalación:** sigue el [manual de usuario](docs/MANUAL_USUARIO.md), con requisitos, clonación, credenciales, uso del Desktop, Monitor y solución de problemas. El repositorio se puede clonar sin cuenta de GitHub.
 
@@ -11,7 +13,7 @@ Aplicación académica Java 21 con **API REST, Desktop JavaFX y Monitor**, organ
 Requisitos: JDK 21, PostgreSQL 17 o superior instalado y PowerShell 7. Maven Wrapper descarga Maven automáticamente. Ejecuta los comandos desde la raíz del proyecto.
 
 ```powershell
-git clone https://github.com/JaqzO8/CacaoSelva.git
+git clone --branch deploy https://github.com/JaqzO8/CacaoSelva.git
 cd CacaoSelva
 
 # Crear/iniciar la instancia PostgreSQL del proyecto (idempotente)
@@ -32,7 +34,7 @@ pwsh -NoProfile -File scripts/run-monitor.ps1
 
 Los scripts de API y Monitor cargan sus variables desde `.env.local` al proceso; no las publiques ni las pegues en comandos.
 
-Abre el `pom.xml` raíz en IntelliJ IDEA o la carpeta en VS Code con Extension Pack for Java. Selecciona JDK 21. No se usa Lombok ni Docker.
+Abre el `pom.xml` raíz en IntelliJ IDEA o la carpeta en VS Code con Extension Pack for Java. Selecciona JDK 21. La web local está en `http://localhost:5080`. Docker se utiliza para el alojamiento público y es opcional en la instalación local.
 
 ## Base de datos y credenciales
 

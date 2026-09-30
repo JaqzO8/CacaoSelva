@@ -74,6 +74,11 @@ public class ApiExceptionHandler {
         return response(HttpStatus.CONFLICT, error.getMessage());
     }
 
+    @ExceptionHandler(pe.edu.cacaoselva.application.exception.RegistroDuplicadoException.class)
+    public ResponseEntity<ApiErrorResponse> duplicado(pe.edu.cacaoselva.application.exception.RegistroDuplicadoException error) {
+        return response(HttpStatus.CONFLICT, error.getMessage());
+    }
+
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<ApiErrorResponse> credencialesInvalidas(CredencialesInvalidasException error) {
         return response(HttpStatus.UNAUTHORIZED, error.getMessage());
