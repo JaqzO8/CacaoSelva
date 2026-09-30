@@ -6,6 +6,8 @@ Aplicación académica Java 21 con **web adaptable a móviles, API REST, Desktop
 
 La rama `deploy` integra `MAURICIO` y añade registro público como operador, interfaz web, correcciones y publicación mediante GitHub Actions. Consulta la [guía de publicación y persistencia](docs/DESPLIEGUE.md) y el [manual web](docs/MANUAL_WEB.md).
 
+**Web:** [cacaoselva.onrender.com](https://cacaoselva.onrender.com). Puedes crear una cuenta y gestionar los lotes compartidos desde computadora o móvil. El alojamiento gratuito puede tardar alrededor de un minuto en arrancar después de un período de inactividad.
+
 **Primera instalación:** sigue el [manual de usuario](docs/MANUAL_USUARIO.md), con requisitos, clonación, credenciales, uso del Desktop, Monitor y solución de problemas. El repositorio se puede clonar sin cuenta de GitHub.
 
 ## Inicio rápido
